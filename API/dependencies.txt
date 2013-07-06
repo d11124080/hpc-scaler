@@ -1,0 +1,2 @@
+Python-requests: Requests is an Apache2 Licensed HTTP library, written in Python, for human beings.
+(URL: https://pypi.python.org/pypi/requests License: Apache2) 
