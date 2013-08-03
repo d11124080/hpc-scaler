@@ -1,0 +1,4 @@
+This pbs_python module is included in the Dynamic Cluster Scaling Enging "hpc-scaler" in accordance with the terms of the GNU General Public License.
+Pre-built binaries are included here, but the complete source code has been omitted because it was not altered. The original GPL license,
+as well as the openpbs license which accompanied the pbs_python module, along with the original author credits and changelog for the module,
+have been included intact. See README, COPYING, COPYING.LESSER, and LICENSE.openpbs for further copyright and licensing information.

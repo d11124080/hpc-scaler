@@ -1,10 +1,14 @@
 '''
-Created on 3 Aug 2013
+TorqueDriver module for the ClusterInterface component. Enables the ClusterInterface to interact with
+the Torque Resource Manager. Should be compliant with other PBS-based Resource Managers such as PBSPro, OpenPBS, etc.
+This version of the driver uses pre-compiled binaries and modules from the pbs_python library.
+
+Created on 13 June 2013
 
 @author: ronan
 '''
 
-from Drivers.Torque.pbs_python.4.3.5 import pbs, PBSQuery, PBSAdvancedParser
+from ClusterInterface.Drivers.Torque.pbs_python.fourthreefive import pbs, PBSQuery, PBSAdvancedParser
 
 class TorqueDriver(object):
     '''
