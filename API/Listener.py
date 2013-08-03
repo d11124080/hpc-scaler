@@ -6,12 +6,13 @@ connection. It shouldn't need to be extended.
 @author: ronan
 '''
 
-import socket           #Python module for working with network sockets
-
-class Listener(object):
+from bottle import route, run
 
 
-    def __init__(self, ):
-        '''
-        Constructor
-        '''
+@route('/<controller>/<method>/<data>')
+def InvokeAction(controller,method,data):
+    print "Controller is", controller
+    print "Method is ", method
+    print "Data is ", data
+
+run(host='localhost', port=8080, server='paste') #eventlet is an asyncrhonous framework with WSGI support.

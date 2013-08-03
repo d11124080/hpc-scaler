@@ -1,2 +1,5 @@
 Python-requests: Requests is an Apache2 Licensed HTTP library, written in Python, for human beings.
-(URL: https://pypi.python.org/pypi/requests License: Apache2) 
+(URL: https://pypi.python.org/pypi/requests License: Apache2)
+
+Twisted is an event-driven networking engine which makes it easy to implement custom network applications.
+(URL: http://twistedmatrix.com/trac/  License: MIT)

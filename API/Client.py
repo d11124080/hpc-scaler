@@ -46,7 +46,8 @@ class APIClient:
             self.results_raw = r.raw ##Also provide for raw data format results
 
 #Uncomment for unit testing
-Client = APIClient('https://github.com/timeline.json', None, None, None, 1)
+#Client = APIClient('https://github.com/timeline.json', None, None, None, 1)
+Client = APIClient('http://localhost:8080/ctrl/meth/stuff', None, None, None, 1)
 print Client.status_code
 print Client.results
 
