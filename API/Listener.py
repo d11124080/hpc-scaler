@@ -6,11 +6,12 @@ connection. It shouldn't need to be extended.
 @author: ronan
 '''
 
-class Listener(object):
-    
+import socket           #Python module for working with network sockets
 
-    def __init__(self):
+class Listener(object):
+
+
+    def __init__(self, ):
         '''
         Constructor
         '''
-        
