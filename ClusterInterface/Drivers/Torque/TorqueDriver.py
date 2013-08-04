@@ -8,7 +8,9 @@ Created on 13 June 2013
 @author: ronan
 '''
 
-from ClusterInterface.Drivers.Torque.pbs_python.fourthreefive import pbs, PBSQuery, PBSAdvancedParser
+from pbs_python.fourthreefive.pbs import pbs
+from pbs_python.fourthreefive.PBSQuery import PBSQuery
+from pbs_python.fourthreefive.PBSAdvancedParser import PBSAdvancedParser
 
 class TorqueDriver(object):
     '''
@@ -17,7 +19,13 @@ class TorqueDriver(object):
     '''
 
 
-    def __init__(selfparams):
+    def __init__(self):
         '''
         Constructor
         '''
+        pbs_server = pbs.pbs_default()
+        print pbs_server
+
+
+TD = TorqueDriver()
+

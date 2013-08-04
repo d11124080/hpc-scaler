@@ -1,0 +1,6 @@
+This driver depends on several components in order to function correctly:
+
+pbs_python is a python module containing wrappers for the Torque C library. Pre-compiled binaries are included in this driver
+(URL: https://oss.trac.surfsara.nl/pbs_python License: GPL)
+
+libtorque
