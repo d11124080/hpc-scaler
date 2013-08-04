@@ -8,11 +8,18 @@ Created on 13 June 2013
 @author: ronan
 '''
 
-from pbs_python.fourthreefive.pbs import pbs
-from pbs_python.fourthreefive.PBSQuery import PBSQuery
-from pbs_python.fourthreefive.PBSAdvancedParser import PBSAdvancedParser
 
-class TorqueDriver(object):
+try:
+    from pbs_python.fourthreefive import pbs, PBSQuery, PBSAdvancedParser
+    from ClusterInterface.ClusterDriver import ClusterDriver
+    import sys
+except (NameError, ImportError) as e:
+    print "Component(s) not found or not readable at default location:"
+    print e
+
+
+
+class TorqueDriver(ClusterDriver):
     '''
     This driver for the Torque Resource Manager is designed to function as part of the
     ClusterInterface.
@@ -23,9 +30,38 @@ class TorqueDriver(object):
         '''
         Constructor
         '''
+
+    #Return the FQDN of the job submission host
+    def getServerName(self):
         pbs_server = pbs.pbs_default()
-        print pbs_server
+        if pbs_server:
+            self.serverName = pbs_server
+            print "about to return name %s" % self.serverName
+            super(TorqueDriver, self).getServerName()
+        else:
+            errno, text = pbs.error()
+            print errno, text
+
+    def dumpDetails(self):
+        pbs_server = pbs.pbs_default()
+        if not pbs_server:
+            print "No default pbs server"
+            sys.exit(1)
+
+        con = pbs.pbs_connect(pbs_server)
+        nodes = pbs.pbs_statnode(con, "", "NULL", "NULL")
+
+        for node in nodes:
+            print node.name
+            for attrib in node.attribs:
+                print '\t', attrib.name, '=', attrib.value
 
 
+
+
+print "Creating new Torque Driver"
 TD = TorqueDriver()
-
+print "Created!"
+sn = TD.getServerName()
+print "Server name is %s" % sn
+TD.dumpDetails()

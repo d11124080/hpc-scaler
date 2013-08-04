@@ -1,6 +1,8 @@
 This driver depends on several components in order to function correctly:
 
-pbs_python is a python module containing wrappers for the Torque C library. Pre-compiled binaries are included in this driver
+pbs_python is a python module containing wrappers for the Torque C library. It should be installed relative to the hpc-scaler
+installation as follows: {hpc-scalar-home}/ClusterInterface/Drivers/Torque/pbs_python/<version> where version is the alphabetic
+spelling of the version number, unspaced. (i.e 4.3.5 becomes "fourthreefive").
 (URL: https://oss.trac.surfsara.nl/pbs_python License: GPL)
+Build dependencies: libtorque, python-dev
 
-libtorque
