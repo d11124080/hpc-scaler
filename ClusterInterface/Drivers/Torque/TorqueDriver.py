@@ -58,10 +58,10 @@ class TorqueDriver(ClusterDriver):
 
 
 
-
-print "Creating new Torque Driver"
+##Un-comment for unit testing.
+#print "Creating new Torque Driver"
 TD = TorqueDriver()
-print "Created!"
+#print "Created!"
 sn = TD.getServerName()
 print "Server name is %s" % sn
 TD.dumpDetails()
