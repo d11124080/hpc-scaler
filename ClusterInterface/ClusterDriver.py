@@ -35,11 +35,17 @@ class ClusterDriver(object):
         pass    #to be overwritten by child
 
     def getServerName(self):
-        print "now in superclass"
-        print "sn is %s" % self.serverName
+        #print "now in superclass"
+        #print "sn is %s" % self.serverName
         for k, v in vars(self).items():
             print k, v
         return self.serverName
+
+    def getNodes(self):
+        '''
+        query the cluster to obtain information about its worker nodes
+        '''
+        pass #to be implemented by child
 
 
 

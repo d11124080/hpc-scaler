@@ -12,9 +12,8 @@ except (NameError, ImportError) as e:
     print e'''
 
 from importlib import import_module
-from pkgutil import iter_modules
 import sys
-from Drivers.Torque.TorqueDriver import TorqueDriver
+
 
 
 class Cluster(object):
@@ -23,13 +22,14 @@ class Cluster(object):
     '''
 
 
-    def __init__(self, name, driver):
+    def __init__(self, name, driver, path):
         '''
         Constructor is initialised with the name of the cluster and some
         information about the resource manager - the type, server, and tcp port
         '''
         self.nodelist = []  #An empty list which will hold our Node objects
         self.name = name
+        self.path = path
         self.driver = driver
         self.loadDriver()
         print "Created a new cluster named %s which uses the %s Driver" % (self.name, self.driver)
@@ -40,9 +40,13 @@ class Cluster(object):
         Creates an instance of the Driver interface within the cluster object
         '''
         try:
-            module = import_module(self.driver +"Driver",package="ClusterInterface.Drivers.%s" % self.driver)
+            #Append the path to our driver to our python path
+            sys.path.append(self.path +self.driver+'/')
+            #In order to dynamically load a driver we don't know
+            #the name of
+            module = import_module(self.driver +"Driver")
             class_ = getattr(module, self.driver +"Driver")
-            self.clusterInstance = class_()
+            self.interface = class_()
         except ImportError, e:
             print e
         except Exception, y:
@@ -52,11 +56,23 @@ class Cluster(object):
         '''
         Populates the Cluster instance with information about the clusters nodes.
         '''
-        self.clusterInstance.dumpDetails()
 
 ##Uncomment for unit testing
-
-c = Cluster("Ronans Cluster", "Torque")
+c = Cluster("Ronans Cluster", "Torque", "Drivers/")
+try:
+    c.interface.dumpDetails()
+except Exception, ec:
+    print ec
+d = Cluster("timmys cluster", "NonExistantDriver", "Drivers/")
+try:
+    d.interface.dumpDetails()
+except Exception, ed:
+    print ed
+f = Cluster("Some Name", "Torque", "invalidpath")
+try:
+    f.interface.dumpDetails()
+except Exception, ef:
+    print ef
 
 
 

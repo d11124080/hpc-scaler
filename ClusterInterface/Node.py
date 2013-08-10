@@ -32,4 +32,4 @@ class Node(object):
         self.status = status
 
     def addQueue(self,queueName):
-        self.
+        pass

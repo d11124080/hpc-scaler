@@ -31,16 +31,44 @@ class TorqueDriver(ClusterDriver):
         Constructor
         '''
 
+    def connect(self):
+        try:
+            pbs_server = pbs.pbs_default()
+            self.con = pbs.pbs_connect(pbs_server)
+            if self.con:
+                self.connectionStatus = 'Connected'
+        except Exception, e:
+            print e
+
+    def disconnect(self):
+        #pbs_disconnect returns non-zero value if an error occurs
+        retval = pbs.pbs_disconnect(self.con)
+        if (retval is 0):
+            self.connectionStatus = 'Not Connected'
+            self.con = 0
+        else:
+            print pbs.pbs_statserver(self.con)
+
+    def getConStatus(self):
+        '''
+        Determines whether an active connection with the Resource Manager exists -
+        Can be handled by parent class, so just call the equivilent function in the parent.
+        '''
+        super(TorqueDriver, self).getConStatus()
+
+
     #Return the FQDN of the job submission host
     def getServerName(self):
         pbs_server = pbs.pbs_default()
         if pbs_server:
             self.serverName = pbs_server
-            print "about to return name %s" % self.serverName
+            #print "DEBUG: about to return name %s" % self.serverName
+            #Call our parent function's equivilent function
             super(TorqueDriver, self).getServerName()
         else:
             errno, text = pbs.error()
             print errno, text
+
 
     def dumpDetails(self):
         pbs_server = pbs.pbs_default()
@@ -48,20 +76,31 @@ class TorqueDriver(ClusterDriver):
             print "No default pbs server"
             sys.exit(1)
 
-        con = pbs.pbs_connect(pbs_server)
-        nodes = pbs.pbs_statnode(con, "", "NULL", "NULL")
+        #con = pbs.pbs_connect(pbs_server)
+        nodes = pbs.pbs_statnode(self.con, "", "NULL", "NULL")
 
         for node in nodes:
             print node.name
             for attrib in node.attribs:
                 print '\t', attrib.name, '=', attrib.value
 
+    def getNodes(self):
+        '''
+
+        '''
+
 
 
 ##Un-comment for unit testing.
-#print "Creating new Torque Driver"
+print "Creating new Torque Driver"
 TD = TorqueDriver()
-#print "Created!"
-sn = TD.getServerName()
-print "Server name is %s" % sn
+print "Created!"
+TD.getServerName()
+print "Server name is %s" % TD.serverName
+print "Trying to connect..."
+TD.connect()
+print "Trying to disconnect..."
+TD.disconnect()
+
 TD.dumpDetails()
+print TD.connectionStatus
