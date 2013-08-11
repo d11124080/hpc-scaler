@@ -132,6 +132,9 @@ class TorqueDriver(ClusterDriver):
                 else:
                     print "attrib is",attrib.name,"and value is",attrib.value
             thisnode.printDetails()
+            self.nodes.append(thisnode)
+        print "number of nodes is ",len(self.nodes)
+
 
 
 
