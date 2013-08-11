@@ -3,6 +3,7 @@ Created on 3 Aug 2013
 
 @author: ronan
 '''
+import string
 
 class Node(object):
     '''
@@ -21,6 +22,7 @@ class Node(object):
         self.mem = 0        #Amount of memory on this worker node (KiB)
         self.status = None  #Status of node as per resource manager
         self.queues = []    #We'll store a list of queue objects representing the queue a node is in.
+        self.properties = [] #Likewise a list of properties of this node.
 
     def setNumCpus (self,num):
         self.num_cpus = num
@@ -28,8 +30,27 @@ class Node(object):
     def setMem(self,mem):
         self.mem = mem
 
-    def setStatus(self,status):
-        self.status = status
+    def setState(self,state):
+        self.state = state
+
+    def setHostname(self,hostname):
+        self.hostname = hostname
 
     def addQueue(self,queueName):
         pass
+
+    def addProperty(self,property):
+        self.properties.append(property)
+
+    def getProperties(self):
+        return string.join(self.properties)
+
+
+    def printDetails(self):
+        print "Details for Worker Node \"",self.hostname,"\":"
+        print "-----------------------------------------------"
+        print "Number of CPU Cores:",self.num_cpus
+        print "Total Available Memory:",self.mem
+        print "Current Node State:",self.state
+        print "Properties:",self.getProperties()
+        print "-----------------------------------------------"

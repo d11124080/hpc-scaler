@@ -5,11 +5,6 @@ Created on 23 Jun 2013
 
 @author: ronan
 '''
-'''try:
-    from Drivers import *
-except (NameError, ImportError) as e:
-    print "Unable to load Cluster Drivers:"
-    print e'''
 
 from importlib import import_module
 import sys
