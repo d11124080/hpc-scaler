@@ -20,7 +20,7 @@ class Node(object):
         '''
         self.num_cpus = 0   #Number of CPU cores on this worker node
         self.mem = 0        #Amount of memory on this worker node (KiB)
-        self.status = None  #Status of node as per resource manager
+        self.state = None  #State of the node - Should be set to Up or Down
         self.queues = []    #We'll store a list of queue objects representing the queue a node is in.
         self.properties = [] #Likewise a list of properties of this node.
 
