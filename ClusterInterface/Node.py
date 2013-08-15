@@ -3,7 +3,9 @@ Created on 3 Aug 2013
 
 @author: ronan
 '''
+
 import string
+from ClusterInterface.Job import Job
 
 class Node(object):
     '''
@@ -23,6 +25,7 @@ class Node(object):
         self.state = None  #State of the node - Should be set to Up or Down
         self.queues = []    #We'll store a list of queue objects representing the queue a node is in.
         self.properties = [] #Likewise a list of properties of this node.
+        self.jobs = []      #Array of Jobs (of type Job) currently running on this node, if any.
 
     def setNumCpus (self,num):
         self.num_cpus = num
@@ -44,6 +47,9 @@ class Node(object):
 
     def getProperties(self):
         return string.join(self.properties)
+
+    def addJob(self, job):
+        self.jobs.append(job)
 
 
     def printDetails(self):

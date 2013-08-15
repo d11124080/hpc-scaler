@@ -13,6 +13,7 @@ try:
     from pbs_python.fourthreefive import pbs, PBSQuery, PBSAdvancedParser
     from ClusterInterface.ClusterDriver import ClusterDriver
     from ClusterInterface.Node import Node
+    from ClusterInterface.Job import Job
     import sys
 
 except (NameError, ImportError) as e:
@@ -32,11 +33,14 @@ class TorqueDriver(ClusterDriver):
         '''
         Constructor
         '''
-        self.nodes = []
+        self.nodes = []     #An array of the worker nodes (of type Node) of the cluster
 
-    def connect(self):
+    def connect(self, host=None):
         try:
-            pbs_server = pbs.pbs_default()
+            if host == None:
+                pbs_server = pbs.pbs_default()
+            else:
+                pbs_server = host
             self.con = pbs.pbs_connect(pbs_server)
             if self.con:
                 self.connectionStatus = 'Connected'
@@ -81,7 +85,6 @@ class TorqueDriver(ClusterDriver):
             print "No default pbs server"
             sys.exit(1)
 
-        #con = pbs.pbs_connect(pbs_server)
         nodes = pbs.pbs_statnode(self.con, "", "NULL", "NULL")
 
         for node in nodes:
@@ -123,8 +126,9 @@ class TorqueDriver(ClusterDriver):
                     pairs = [variable.split('=',1) for variable in variables]
                     for data in pairs:
                         if data[0] == 'jobs':
-                            for job in data[1]:
-                                print "job is ",job
+                            for jobid in data[1]:
+                                jobinstance = Job(jobid)
+                                thisnode.addJob(jobinstance)
                         elif data[0] == 'physmem':
                             thisnode.setMem(data[1])
                             print "mem is ",thisnode.mem
