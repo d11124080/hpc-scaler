@@ -60,6 +60,7 @@ class TorqueDriver(ClusterDriver):
         '''
         Determines whether an active connection with the Resource Manager exists -
         Can be handled by parent class, so just call the equivilent function in the parent.
+        
         '''
         super(TorqueDriver, self).getConStatus()
 

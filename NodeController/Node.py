@@ -9,8 +9,10 @@ class Node:
     classdocs
     '''
 
-    def __init__(self):
+    def __init__(self, hostname):
         '''
         Constructor
         '''
+        
+    def getStatus
     
