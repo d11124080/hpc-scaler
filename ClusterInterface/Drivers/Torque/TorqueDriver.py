@@ -33,7 +33,9 @@ class TorqueDriver(ClusterDriver):
         '''
         Constructor
         '''
-        self.nodes = []     #An array of the worker nodes (of type Node) of the cluster
+        self.nodes = []         #An array of the worker nodes (of type Node) of the cluster
+        self.idlenodes = []     #An array of nodes that are idle (i.e no jobs currently running)
+        self.fullnodes = []     #An array of nodes that are at maximum cpu core usage
 
     def connect(self, host=None):
         try:
@@ -60,7 +62,7 @@ class TorqueDriver(ClusterDriver):
         '''
         Determines whether an active connection with the Resource Manager exists -
         Can be handled by parent class, so just call the equivilent function in the parent.
-        
+
         '''
         super(TorqueDriver, self).getConStatus()
 
@@ -73,7 +75,8 @@ class TorqueDriver(ClusterDriver):
         if pbs_server:
             self.serverName = pbs_server
             #print "DEBUG: about to return name %s" % self.serverName
-            #Call our parent function's equivilent function
+            # Call our parent function's equivalent function as specified by the
+            # ClusterDriver template for overwritten methods.
             super(TorqueDriver, self).getServerName()
         else:
             errno, text = pbs.error()
@@ -119,7 +122,7 @@ class TorqueDriver(ClusterDriver):
                     propertyList = attrib.value.split(',')
                     for propertyName in propertyList:
                         thisnode.addProperty(propertyName)
-                        print "added property",propertyName
+                        #print "added property",propertyName
                 elif attrib.name == 'status':
                     #Torque 'status' contains a value which is in turn a string of attributes
                     #and corresponding values(e.g name1=value1,name2=value2 etc)
@@ -127,19 +130,31 @@ class TorqueDriver(ClusterDriver):
                     pairs = [variable.split('=',1) for variable in variables]
                     for data in pairs:
                         if data[0] == 'jobs':
-                            for jobid in data[1]:
-                                jobinstance = Job(jobid)
-                                thisnode.addJob(jobinstance)
+                            if not data[1]:     ##if our list is empty, this node has no jobs running on it.
+                                self.idlenodes.append(thisnode) ##Add to idle nodes list
+                                thisnode.setNumJobs(0)          ##Set number of running jobs to zero
+                                thisnode.setFreeCpus(thisnode.num_cpus) #Set free cpus to the total number of cpus on the node
+                            else:               ##Node is running jobs
+                                for jobid in data[1]:
+                                    jobinstance = Job(jobid)
+                                    thisnode.addJob(jobinstance)
+                                thisnode.setNumJobs(thisnode.jobs.__len__())    ##Add the number of running jobs as a property of the node
+                                if thisnode.num_jobs == thisnode.num_cpus:  ##If num_jobs = num_cpus, this node is completely full
+                                    thisnode.setFreeCpus(0)
+                                    self.fullnodes.append(thisnode)         ##Add to list of full nodes
                         elif data[0] == 'physmem':
                             thisnode.setMem(data[1])
-                            print "mem is ",thisnode.mem
-                        else: print "data is ",data
-                else:
-                    print "attrib is",attrib.name,"and value is",attrib.value
-            thisnode.printDetails()
+                            #print "mem is ",thisnode.mem
+                        #else: print "data is ",data
+                #else:
+                    #print "attrib is",attrib.name,"and value is",attrib.value
+            #thisnode.printDetails()
             self.nodes.append(thisnode)
             self.total_nodes = len(self.nodes)
         print "number of nodes is ",self.total_nodes
+        print "number of idle nodes is ",len(self.idlenodes)
+        print "number of free cpus is ", sum(sequence)
+
 
 
 
@@ -155,6 +170,7 @@ TD.connect()
 #print "Trying to disconnect..."
 #TD.disconnect()
 
-TD.dumpDetails()
+#TD.dumpDetails()
 print TD.connectionStatus
 TD.getNodes()
+TD.getIdleNodes()

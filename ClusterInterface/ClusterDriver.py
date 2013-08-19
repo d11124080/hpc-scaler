@@ -11,8 +11,8 @@ Created on 4 Aug 2013
 class ClusterDriver(object):
     '''
     Template Class which defines how a vendor-specific Driver should be implemented.
-    Subclass Methods which override the methods of this class MUST call the parent method
-    on completion
+    Subclass Methods which override the implemented (i.e non-"pass")methods of this class
+    MUST call the parent method on completion.
     '''
 
 
@@ -37,8 +37,8 @@ class ClusterDriver(object):
     def getServerName(self):
         #print "now in superclass"
         #print "sn is %s" % self.serverName
-        for k, v in vars(self).items():
-            print k, v
+        #for k, v in vars(self).items():
+        #    print k, v
         return self.serverName
 
     def getNodes(self):
@@ -47,6 +47,19 @@ class ClusterDriver(object):
         '''
         pass #to be implemented by child
 
+    def getIdleNodes(self):
+        '''
+        Retrieve a list of idle nodes (i.e nodes which are not running jobs)
+        '''
+    def listNodes(self):
+        '''
+        Prints a list of nodes and their state
+        '''
+        if self.nodes:
+            for node in self.nodes:
+                print "Node: %s, State: %s" % (node.hostname, node.state)
+        else:
+            print "There are currently no known nodes in this cluster"
 
 
 
