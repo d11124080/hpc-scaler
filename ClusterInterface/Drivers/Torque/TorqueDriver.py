@@ -153,7 +153,7 @@ class TorqueDriver(ClusterDriver):
             self.total_nodes = len(self.nodes)
         print "number of nodes is ",self.total_nodes
         print "number of idle nodes is ",len(self.idlenodes)
-        print "number of free cpus is ", sum(sequence)
+        #print "number of free cpus is ", sum(sequence)
 
 
 

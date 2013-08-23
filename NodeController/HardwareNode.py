@@ -1,18 +1,17 @@
 '''
-Created on 23 Jun 2013
+Created on 23 Aug 2013
 
 @author: ronan
 '''
 
-class Node:
+class MyClass(object):
     '''
     classdocs
     '''
 
-    def __init__(self, hostname):
+
+    def __init__(selfparams):
         '''
         Constructor
         '''
         
-    def getStatus
-    
