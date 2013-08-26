@@ -11,6 +11,10 @@ Created on 13 June 2013
 
 try:
     from pbs_python.fourthreefive import pbs, PBSQuery, PBSAdvancedParser
+except (NameError, ImportError) as pbs_import_err:
+    pbs_python_build = new Build()
+
+try:
     from ClusterInterface.ClusterDriver import ClusterDriver
     from ClusterInterface.Node import Node
     from ClusterInterface.Job import Job

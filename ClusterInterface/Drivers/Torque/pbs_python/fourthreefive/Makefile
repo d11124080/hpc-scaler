@@ -1,7 +1,7 @@
 TAR=tar
 GZIP_ENV=--best
 
-PREFIX=/home/ronan/Dropbox/DIT/fyp/pbs_python/fourthreefive
+PREFIX=/home/ronan/Dropbox/DIT/fypnew/ClusterInterface/Drivers/Torque/pbs_python/fourthreefive
 exec_prefix=$(PREFIX)
 BINDIR=$(PREFIX)/bin
 

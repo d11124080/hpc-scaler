@@ -1,6 +1,6 @@
 '''
 ClientHandler for the Cluster Interface API.
-Accepts API requests and returns responses to the 
+Accepts API requests and returns responses to the
 client.
 
 @author: ronan
@@ -17,4 +17,3 @@ class ciClientHandler(ClientHandler):
         '''
         Constructor
         '''
-        
