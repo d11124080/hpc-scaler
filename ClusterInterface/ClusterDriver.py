@@ -43,9 +43,14 @@ class ClusterDriver(object):
 
     def getNodes(self):
         '''
-        query the cluster to obtain information about its worker nodes
+        Query the cluster to obtain information about its worker nodes. This function, when overwritten by
+        child, should populate the clusters nodelist in its entirety,
+
         '''
-        pass #to be implemented by child
+        try: #to be implemented by child
+            raise Exception("Error - getNodes method MUST be implemented by Driver")
+        except Exception as cept:
+            print cept
 
     def getIdleNodes(self):
         '''
