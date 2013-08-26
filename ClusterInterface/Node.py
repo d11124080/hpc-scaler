@@ -49,8 +49,8 @@ class Node(object):
     def addQueue(self,queueName):
         pass
 
-    def addProperty(self,property):
-        self.properties.append(property)
+    def addProperty(self,prop):
+        self.properties.append(prop)
 
     def getProperties(self):
         return string.join(self.properties)
