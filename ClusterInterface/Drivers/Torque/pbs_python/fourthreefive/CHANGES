@@ -1,3 +1,9 @@
+=========== hpc-scaler NodeController
+ * Removed static definition of DOCDIR in configure.in
+
+ -- DOCDIR=/usr/share/doc/pbs-python
+ ++ DOCDIR= @docdir@
+
 =========== 4.3.5
  * PBSQuery bugfix, parsing of node status line with multiple EVENT: settings
    was wrong
@@ -15,33 +21,33 @@
         no job
   Author: Bas van der Vlies
 
- * PBSQuery bugfix. getjob() can now handle short jobname, eg: 
-    * p.getjob('6073545') 
+ * PBSQuery bugfix. getjob() can now handle short jobname, eg:
+    * p.getjob('6073545')
 
-   Author: Willem Vermin (SARA) & Bas van der Vlies 
+   Author: Willem Vermin (SARA) & Bas van der Vlies
 
- * added an example: pbs_jobmonitor shows the output of top 
+ * added an example: pbs_jobmonitor shows the output of top
    -u user on the node
     - one cycle of top
     - user: the user the job belongs to
 
-   renamed as pbs_joblogin logs in to the node as the user 
+   renamed as pbs_joblogin logs in to the node as the user
    who invokes this script (os.getenv('USER'))
 
    Author: Willem Vermin (SARA)
-  
+
 =========== 4.3.3
  * New generated files for pbs_wrap.c and pbs.py to support python 3.X versions
    Reported by: Steve Traylen <steve dot traylen add cern dot ch>
-   Author: Bas van der Vlies 
+   Author: Bas van der Vlies
 
  * Fixed AdvancedParser when using 01-12 range the zero was not appended.
    Reported by: Ramon Bastiaans
    Author: Dennis Stam
 
- * examples/sara_nodes.py: Catch the PBSQuery error if we can not make a 
+ * examples/sara_nodes.py: Catch the PBSQuery error if we can not make a
    connection with the batch server and exit the program.
-   Author: Bas van der Vlies 
+   Author: Bas van der Vlies
 
  * Remove the debian dependency on AdvancedParser. We now have
    our own PBSAdvanceParser so it does not conflict with other SARA
@@ -49,13 +55,13 @@
    Reported by: Ramon Bastiaans (SARA)
    Fixed by: Bas van der Vlies
 
- * Make pbs_torque only dependend on libtorque instead of torque and adjusted 
+ * Make pbs_torque only dependend on libtorque instead of torque and adjusted
    the maintainer of the package, closes #30
    Reported by: Guillermo Marcus  <guillermo dot marcus add@gmail dot com>
    Fixed by: Bas van der Vlies
-   
+
 =========== 4.3.0
- * new_rack_pbsmon.py: For backward compatibility added -a/--all option. 
+ * new_rack_pbsmon.py: For backward compatibility added -a/--all option.
    Has the same functionality as -s/--summary
    Author: Bas van der Vlies
 
@@ -89,7 +95,7 @@
    Author: Bas van der Vlies
 
 =========== 4.2.0
- * Updated LICENSE file to LGPLV3. Thanks to Justin Bronder 
+ * Updated LICENSE file to LGPLV3. Thanks to Justin Bronder
    (jsbronder add gentoo dot org) for the information and
    explanation.
 
@@ -114,11 +120,11 @@
 
  * examples/new_rack_pbsmon.py:
      - Better specification for node expression
-     - added a new option -l/--list to list the state of a nodes and which job 
+     - added a new option -l/--list to list the state of a nodes and which job
        is running on it, eg:
              new_rack_pbsmon.py - l gb-r[1-3]n[3-6] gb-r4[n1-20]
 
-   Authors: Dennis Stam & Bas van der Vlies 
+   Authors: Dennis Stam & Bas van der Vlies
    Applied by: Bas van der Vlies
 
  * examples/sara_nodes.py:
@@ -132,10 +138,10 @@
    Applied by: Bas van der Vlies
 
  * Changed build system for debian
-   Authors: Dennis Stam & Bas van der Vlies 
+   Authors: Dennis Stam & Bas van der Vlies
 
 =========== 4.1.2
- * examples/new_rack_pbsmon.py now uses the new PBSQuery data 
+ * examples/new_rack_pbsmon.py now uses the new PBSQuery data
    structure.
    Author: Bas van der Vlies
 
@@ -146,7 +152,7 @@
 
 =========== 4.1.0
  * Delete function pbs.version() replaced by
-    * pbs.version 
+    * pbs.version
         This is a string variable
     * pbs.version_info
         Is a tuple variable. So we can use it in scripts
@@ -157,16 +163,16 @@
    Author: Bas van der Vlies
 
  * More robust make/configure/setup.py
-   Reported by: 
-   	- Saidi, Yacine <saidi add linmpi dot mpg dot de> 
-	- Shunjie Lau <eijnuhs add gmail dot com> 
+   Reported by:
+   	- Saidi, Yacine <saidi add linmpi dot mpg dot de>
+	- Shunjie Lau <eijnuhs add gmail dot com>
    Author: Bas van der Vlies
 
 
- * Only use the pbs_wrap.c and pbs.py 2.4 version for torque version 2.4.7 and higher. 
-   Reported by: Saidi, Yacine <saidi add linmpi dot mpg dot de> 
+ * Only use the pbs_wrap.c and pbs.py 2.4 version for torque version 2.4.7 and higher.
+   Reported by: Saidi, Yacine <saidi add linmpi dot mpg dot de>
    Author: Bas van der Vlies
-   
+
 =========== 4.0.2
   * Quick fix so we do not get any undefined symbols. Forgot to
     add the torque library when we compile the package.
@@ -177,7 +183,7 @@
   * Fixed a bug in setting the right library path  for compiling.
     Reported by: Chad Vizino ( vizino add psc dot edu )
     Author: Bas van der Vlies
-   
+
 =========== 4.0.0
   * pbs.py added some new functions for 2.4 version:
     - pbs_fbserver(void);
@@ -194,7 +200,7 @@
   * autotools environment
     - Added support for finding pbs-config (borrowed for mpiexec source)
     - Detecting which version of torque is installed
-    - only support installations that have pbs-config installed. 
+    - only support installations that have pbs-config installed.
     - Removed old code for installations that do not a have pbs-config
       installed.
 
@@ -217,7 +223,7 @@
 =========== 3.6.0
   * pbs, new generated pbs_wrap.c, pbs.py fixes a bug in pbs_runjob()
     Reported by: Dennis Stam
-    Fixed by: Bas van der Vlies 
+    Fixed by: Bas van der Vlies
 
 =========== 3.5.0
   * PBSQuery
@@ -257,9 +263,9 @@
 	  that dictionary values are now of type list or dictionary depends
 	  on the value of the keyword, eg for a node:
 	    - np = 2:
-	      * node['np'] = [ '2' ]  
+	      * node['np'] = [ '2' ]
 
-	    - properties = cores2, mem4gb, parallel 
+	    - properties = cores2, mem4gb, parallel
 	      * node['properties'] = [ 'cores2', 'mem4gb', 'parallel' ]
 
 	    - status = arch=x86_64,sessions=22599,,size=70627864kb, ...
@@ -292,13 +298,13 @@
 	  node = p.getnode('gb-r1n1')
 	  print node.name
 	  for attrib in node:
-	  	print '%\t%s = %s' %(attrib, node[attrib]) 
+	  	print '%\t%s = %s' %(attrib, node[attrib])
 	Author: Bas van der Vlies
 
 	- fixed an error in getnode, getqueue and getjob, return empty
 	  dictionary if not found
 	Author: Bas van der Vlies
-	
+
 	- New build system for rpm packages, make -f Makefile.rpm
 	  Author: Michel Jouvin <jouvin add lal dot in2p3 dot fr>
 
@@ -325,13 +331,13 @@
 		* Fixed a memory leak when used in daemon mode
 		Author: Bas van der Vlies <basv@sara.nl>
 
-=========== 2.9.8 
-	- pbs_python.spec file patch added libdir and python defines so it 
+=========== 2.9.8
+	- pbs_python.spec file patch added libdir and python defines so it
 	  will build for RHEL5.1/CentOS 5.1
 	  by        : Michael Sternberg <sternberg add anl dot gov>
 	  applied by: Bas van der Vlies
 
-	- Updated the header files for pbs_python. So it can use some new 
+	- Updated the header files for pbs_python. So it can use some new
 	  defines variables/defines, eg:
 		* ATTR_NODE_status
 		* ATTR_NODE_note
@@ -343,7 +349,7 @@
 		log_size(void);
 	  Added by: Bas van der Vlies
 
-	- We now have proper destructors (free memory) in SWIG for attrl and 
+	- We now have proper destructors (free memory) in SWIG for attrl and
 	  attropl attributes.
 	  Added by: Bas van der Vlies
 
@@ -352,14 +358,14 @@
 		  a certain property, eg:
 		   - get all nodes with property 'cores8' and return all attributes:
 		      getnodes_with_property('cores8')
-		
-		   - get all nodes with property 'cores2' and only return the 
+
+		   - get all nodes with property 'cores2' and only return the
 		     attributes 'state' and 'properties':
 		      attrl = [ 'state', 'properties' ]
 		      getnodes_with_property('cores2', attrl)
-		
-		     Only for torque version > 2.1.0 
-	     
+
+		     Only for torque version > 2.1.0
+
 		Added by: Bas van der Vlies
 
 		* Added to class node the function
@@ -390,11 +396,11 @@
 	   Fixed by   : Bas van der Vlies
 
 	- PBSQuery.py
-	   * Added get_version() for server class, returns the version of 
+	   * Added get_version() for server class, returns the version of
 	     the batch server
 	     Added by    : Bas van der Vlies
 
-	   * Added get_nodes() for job class, returns a list of nodes on 
+	   * Added get_nodes() for job class, returns a list of nodes on
 	     which the job is run
 	     Added by    : Bas van der Vlies
 
@@ -428,20 +434,20 @@ Suggested by: Troy Baer
 
 PBSQuery.py:
 	- If we can not make a connection with the server
-	  then raise an exception and let the programmer 
+	  then raise an exception and let the programmer
 	  decides what to do.
 
 pbs_python.spec:
 	- It can now handle mode bits
 	  Author: Martin Pels from SARA
-        
+
 =========== Version 2.8.0
 
 setup.py:
 	- Added /usr/lib to PBS_LIB_DIR
 
 pbs.py:
-	- Added new function "pbs.error()". This function checks if 
+	- Added new function "pbs.error()". This function checks if
 	  an error has occured with a pbs function, eg:
 	    task_id = pbs.pbs_submit(c, attrl, "A.tsk", 'NULL', 'NULL')
 	    error_number, err_txt = pbs.error()
@@ -473,7 +479,7 @@ PBSQuery.py:
 Fixed an error the previous version was in DEBUG mode. So
 you get an lot undesired output on the screen.
 
-debian package now also generated a package with the write 
+debian package now also generated a package with the write
 version info.
 
 =========== Version 2.7.8
@@ -485,15 +491,15 @@ Setup.py:
 
 =========== Version 2.7.7
 
-PBSQuery module: 
+PBSQuery module:
   It can now be used in daemon programs. The pbs_server closes
   the connection after an certain amount of time. This is fixed,
-  before every query there is an new connection and if the query 
+  before every query there is an new connection and if the query
   is finished the connection is closed.
-  
+
 =========== Version 2.7.6
 
-Now setup.py can also handle old Oscar Installations. 
+Now setup.py can also handle old Oscar Installations.
 Thanks To: Robin Humble
 
 Fixed an print statement fix in new_interface.py:
@@ -502,16 +508,16 @@ Thanks To: Robin Humble
 Made some improvements for PBSQuery module:
 	- Updated the documentation
 	- Added the has_key() function to all
- 	  PBSObjects. So that the behaviour is similar to 
+ 	  PBSObjects. So that the behaviour is similar to
           an dictionary
 	  Suggested By: Ramon Bastiaans
-	
+
 =========== Version 2.7.5
- Added PBSQuery module.  This module requires pbs.py and it a simple module 
- for querying the pbs server. The documentation is in the module. Use for 
+ Added PBSQuery module.  This module requires pbs.py and it a simple module
+ for querying the pbs server. The documentation is in the module. Use for
  example ipython to read it.
 
- Written By: Roy Dragseth 
+ Written By: Roy Dragseth
              Bas van der Vlies
 
  eg: ( see also examples/new_interface.py)
@@ -524,8 +530,8 @@ Made some improvements for PBSQuery module:
  	print job
 
 =========== Version 2.7.4
- New versions fixes an bug in function pbs.pbs_statnode(). 
- Reported by: Keith Poirier 
+ New versions fixes an bug in function pbs.pbs_statnode().
+ Reported by: Keith Poirier
 
  Configure support:
  Contributed By: Yaroslav Halchenko
@@ -533,13 +539,13 @@ Made some improvements for PBSQuery module:
  Debian package support:
  Contributed By: Yaroslav Halchenko
 
- Added Support for Debuging the interface, You must edit pbs_wrap.c 
+ Added Support for Debuging the interface, You must edit pbs_wrap.c
  and search for SARA_DEBUG:
 	#define SARA_DEBUG 1
  Implemented by: Ramon Bastiaans
 
  examples/pbsmon.py:
- 	- Fixed an error when regex fails to determine node number, 
+ 	- Fixed an error when regex fails to determine node number,
 	  no status was displayed
         - It will now display and 'j' if the node is free for the batch
 	  system and a job runs on the node (SMP-systems).
@@ -548,13 +554,13 @@ Made some improvements for PBSQuery module:
  examples/rack_pbsmon.py:
  	- An pbsmon that display node info per rack
 	- Edit the rack_pbsmon.py to adjust the values. It requires
-	  that hostname contains rack and node id's, 
+	  that hostname contains rack and node id's,
 	  eg: gb-r<number>n<number>
  Contributed by: Walter de Jong
 
 =========== Version 2.7.3
  The name SPBS is changed to the new name TORQUE (Tera-scale Open-source
- Resource and QUEing manager). 
+ Resource and QUEing manager).
 
  The interface support OPENPBS and TORQUE.
 
@@ -567,14 +573,14 @@ Made some improvements for PBSQuery module:
 
 =========== Version 2.7
  Forgot to wrap the pbs_statfree() function. So we could not free
- allocated memory from functions that return 'struct batch_status *' 
+ allocated memory from functions that return 'struct batch_status *'
  like pbs_statjob().
 
  pbsmon.py can now handle 2 and 3 digit hostnames. Patch supplied by
  Daniel Olson
 
 =========== Version 2.6.1
- Setup.py now checks if all openpbs libraries are installed to compile the 
+ Setup.py now checks if all openpbs libraries are installed to compile the
  package.
 
 =========== Version 2.6
@@ -601,7 +607,7 @@ Made some improvements for PBSQuery module:
 =========== Version 2.3
  Bugfix in the pbsnodes-a.py. Forgot to import the sys module.
 
- Removed some obsolete code. 
+ Removed some obsolete code.
 
  As for now we make use of the distutils module. So the package
  is automatically compiled and installed in proper directories, usage:
@@ -613,7 +619,7 @@ Made some improvements for PBSQuery module:
  can check if we have the right interface version:
  import pbs
  print pbs.version()
- 
+
 
 =========== Version 2.2
 
@@ -636,8 +642,8 @@ There is also a python function:
      list - Is a optional paramter. A list of resource keywords
 
    If 'list' is not supplied then this function will get the values
-   for the standard resource keywords, eg uname, loadave, .. + 'arch' 
-   depended keywords. The arch feature is only implemented for linux, 
+   for the standard resource keywords, eg uname, loadave, .. + 'arch'
+   depended keywords. The arch feature is only implemented for linux,
    but it can easily be ported to other oses.
 
    if 'list' is supplied then we only fetch values for the keywords
@@ -649,10 +655,10 @@ There is also a python function:
 
 =========== Version 2.0
 
-The previous version was a simple interface above the PBS C API LIB.  This 
+The previous version was a simple interface above the PBS C API LIB.  This
 interface has gone a major changes. The most noticeable change is  that
-the functions accept/return Python lists instead of C-lists.  So you can now 
-use standard Python syntax for manipulating Python lists. If you are familar 
+the functions accept/return Python lists instead of C-lists.  So you can now
+use standard Python syntax for manipulating Python lists. If you are familar
 with the Python syntax then you will appreciate this new interface.
 
 NOTE:
@@ -688,7 +694,7 @@ NO next field anymore:
         print '\t', node_attrl.name, '=', node_attrl.value
 	node_attrl = node_attrl.next
 
-    nodes = nodes.next 
+    nodes = nodes.next
 
 
   new_code:
@@ -706,6 +712,6 @@ connect of attrl and attropl classes:
 
    print  attr_l[0]
    >> (bas,,van der Vlies)
-    
+
 I hope these examples illustrate the changes. If you specify a wrong type
 for a function then function wil raise a Python exception.

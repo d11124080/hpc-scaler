@@ -1,11 +1,11 @@
 TAR=tar
 GZIP_ENV=--best
 
-PREFIX=/home/ronan/Dropbox/DIT/fypnew/ClusterInterface/Drivers/Torque/pbs_python/fourthreefive
+PREFIX=/home/ronan/project/hpc-scaler/ClusterInterface/Drivers/Torque/pbs_python/fourthreefive
 exec_prefix=$(PREFIX)
 BINDIR=$(PREFIX)/bin
 
-DOCDIR=/usr/share/doc/pbs-python
+DOCDIR=/home/ronan/project/hpc-scaler/ClusterInterface/Drivers/Torque/pbs_python/fourthreefive
 EXAMPLES=$(DOCDIR)/examples
 
 .PHONY: install pythonlib
@@ -16,10 +16,6 @@ pythonlib:
 #install: pythonlib sara_install
 install: pythonlib
 	python ./setup.py install --prefix $(DESTDIR)/$(exec_prefix) ;
-	install -D LICENSE.openpbs $(DESTDIR)/$(DOCDIR)/LICENSE.openpbs
-	install -D COPYING $(DESTDIR)/$(DOCDIR)/COPYING
-	install -D COPYING.LESSER $(DESTDIR)/$(DOCDIR)/COPYING.LESSER
-	(cd examples; for i in *py; do install -D $$i  $(DESTDIR)/$(EXAMPLES)/$${i}; done)
 
 sara_install:
 	install -D examples/new_rack_pbsmon.py $(DESTDIR)/$(BINDIR)/pbsmon

@@ -22,7 +22,8 @@ class Build(object):
         '''
         Constructor
         '''
-
+        cwd = os.getcwd()
+        print "current dir is ",cwd
         self.pbs_python_ver = '4.3.5'
         self.verstring = "fourthreefive"
         self.getConfig(cfgFile)
@@ -38,6 +39,7 @@ class Build(object):
             print "Error Message: ",e
 
     def getConfig(self, cfgFile):
+
         #Decipher build path from the ClusterInterface config
         config = ConfigParser.RawConfigParser()
         config.read(cfgFile)
@@ -65,7 +67,7 @@ class Build(object):
 
         #Wrap our os commands in lists for passing to subprocess.Popen()
         make_clean = ["make", "clean"]
-        configure = ["./configure", "--prefix="+cwd]
+        configure = ["./configure", "--prefix="+cwd, "--docdir="+cwd]
         make = ["make"]
         make_install = ["make", "install"]
 
