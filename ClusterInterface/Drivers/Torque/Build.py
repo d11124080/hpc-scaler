@@ -82,11 +82,11 @@ class Build(object):
         if cfg_cmd.returncode:    ##Non-zero return code implies an error with our configure
             raise Exception("An error occurred configuring pbs_python - check dependencies")
 
-        #If configure has succesfully completed, we can try to compile
+        #If configure has successfully completed, we can try to compile
         make_cmd = subprocess.Popen(make)
         make_cmd.wait()
         if make_cmd.returncode:     ##Again, non-zero implies our make has gone wrong
-            raise Exception("An error occurred building the pbs_python library - is gcc installed?")
+            raise Exception("An error occurred building the pbs_python library - check dependencies")
 
         #All being well so far, we can try a make install at this point
         mi_cmd = subprocess.Popen(make_install)
@@ -98,4 +98,4 @@ class Build(object):
 
 
 #Uncomment for unit testing
-bld = Build("../../../hpc-scaler.cfg")
+#bld = Build("../../../hpc-scaler.cfg")

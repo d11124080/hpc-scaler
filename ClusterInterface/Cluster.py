@@ -33,14 +33,14 @@ class Cluster(object):
         self.name = config.get(config_section, "hostname")
         self.driverPath = config.get(config_section, "driver_path")
         self.driver = config.get(config_section, "cluster_driver")
-        # Initialise cluster components
-        self.nodelist = []  #An empty list which will hold our Node objects
+
         # Attempt to load our driver, which creates a driver interface within our
         # cluster object.
         self.loadDriver()
         #print "DEBUG: Created a new cluster named %s which uses the %s Driver" % (self.name, self.driver)
         #Call buildCluster to populate the cluster node data
-        self.buildCluster()
+        #print "now going to build cluster"
+        #self.buildCluster()
 
     def loadDriver(self):
         '''
@@ -62,13 +62,20 @@ class Cluster(object):
 
     def buildCluster(self):
         '''
-        Populates the Cluster instance with information about the clusters nodes.
+        Populates the Cluster instance with information about the clusters nodes using
+        the interface created by loadDriver.
         '''
+        #self.interface.getNodes()
 
 ##Uncomment for unit testing
 c = Cluster("../hpc-scaler.cfg")
 try:
-    c.interface.dumpDetails()
+    c.interface.connect()
+    name = c.interface.serverName
+    print "name is",name
+    c.interface.getNodes()
+    #c.interface.dumpDetails()
+    c.interface.disconnect()
 except Exception, ec:
     print ec
 #d = Cluster("timmys cluster", "NonExistantDriver", "Drivers/")

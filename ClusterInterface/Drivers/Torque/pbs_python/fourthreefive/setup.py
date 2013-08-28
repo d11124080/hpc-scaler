@@ -8,7 +8,7 @@
 import sys
 import os
 
-from distutils.core import setup, Extension 
+from distutils.core import setup, Extension
 
 # Strip off the -L it is also added by the python setup tools
 #
@@ -54,7 +54,7 @@ else:
 
 os.chdir('..')
 
-setup ( 
+setup (
     name = 'pbs_python',
     version = '4.3.5',
     description = 'openpbs/torque python interface',
@@ -64,16 +64,16 @@ setup (
     url = 'http://oss.trac.surfsara.nl/pbs_python',
 
 
-    extra_path = 'pbs',
-        package_dir = { '' : 'src' }, 
-        py_modules = [ 'pbs', 'PBSQuery', 'PBSAdvancedParser' ], 
+    extra_path = '',
+        package_dir = { '' : 'src' },
+        py_modules = [ 'pbs', 'PBSQuery', 'PBSAdvancedParser' ],
 
-    ext_modules = [ 
+    ext_modules = [
         Extension( '_pbs', ['src/pbs_wrap.c'],
         library_dirs = [ PBS_LIB_DIR ],
         extra_link_args = [ PBS_LIB_COMPILE_LINE ],
         define_macros =  [ (TORQUE_VERSION, None) ],
         libraries = LIBS,
-        ) 
+        )
     ]
 )

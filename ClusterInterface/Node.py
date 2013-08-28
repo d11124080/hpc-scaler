@@ -5,7 +5,7 @@ Created on 3 Aug 2013
 '''
 
 import string
-from ClusterInterface.Job import Job
+from Job import Job
 
 class Node(object):
     '''
