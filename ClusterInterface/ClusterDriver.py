@@ -103,6 +103,15 @@ class ClusterDriver(object):
         for job in self.jobs:
             job.printDetails()
 
+    def getLongestWait(self):
+        '''Find the Job which has been queued the longest'''
+        longest_wait_t = 0
+        for job in self.jobs:
+            if job.tiq > longest_wait_t:
+                longest_wait_t = job.tiq
+                longest_wait_job = job.jobId
+        print "Job %s has been waiting the longest, at %d" % (longest_wait_job, longest_wait_t)
+
 
 
 

@@ -76,6 +76,7 @@ try:
     c.interface.getNodes()
     c.interface.getJobs()
     c.interface.printJobs()
+    c.interface.getLongestWait()
     #c.interface.dumpDetails()
     c.interface.disconnect()
 except Exception, ec:
