@@ -5,7 +5,7 @@ PREFIX=@prefix@
 exec_prefix=$(PREFIX)
 BINDIR=$(PREFIX)/bin
 
-DOCDIR=/usr/share/doc/pbs-python
+DOCDIR=@docdir@
 EXAMPLES=$(DOCDIR)/examples
 
 .PHONY: install pythonlib
@@ -15,14 +15,7 @@ pythonlib:
 
 #install: pythonlib sara_install
 install: pythonlib
-	##Modified for hpc-scalar application to explicity set the module path
-	#python ./setup.py install --prefix $(DESTDIR)/$(exec_prefix) ;
-	python ./setup.py install --install-lib $(DESTDIR)/$(exec_prefix) ;
-	##Omitted for hpc-scalar application as the destination and source are the same
-	#install -D LICENSE.openpbs $(DESTDIR)/$(DOCDIR)/LICENSE.openpbs
-	#install -D COPYING $(DESTDIR)/$(DOCDIR)/COPYING
-	#install -D COPYING.LESSER $(DESTDIR)/$(DOCDIR)/COPYING.LESSER
-	#(cd examples; for i in *py; do install -D $$i  $(DESTDIR)/$(EXAMPLES)/$${i}; done)
+	python ./setup.py install --prefix $(DESTDIR)/$(exec_prefix) ;
 
 sara_install:
 	install -D examples/new_rack_pbsmon.py $(DESTDIR)/$(BINDIR)/pbsmon

@@ -7,11 +7,21 @@ Created on 13 June 2013
 
 @author: ronan
 '''
+
+
 try:
-    from Drivers.Torque.Build import Build
-    from ClusterDriver import ClusterDriver
-    from Node import Node
-    from Job import Job
+    from pbs_python.fourthreefive import pbs, PBSQuery, PBSAdvancedParser
+except (NameError, ImportError) as pbs_import_err:
+    try:
+        from Build import Build
+    except (NameError, ImportError) as bld_imp_err:
+        print "Fatal Error Building pbs_python:",bld_imp_err
+    pbs_python_build = Build("../../../../../hpc-scaler.cfg")
+
+try:
+    from ClusterInterface.ClusterDriver import ClusterDriver
+    from ClusterInterface.Node import Node
+    from ClusterInterface.Job import Job
     import sys
 
 except (NameError, ImportError) as e:
@@ -19,61 +29,31 @@ except (NameError, ImportError) as e:
     print e
 
 
-## Attempt to import our pbs_python library module, which used compiled c libraries
-# (_pbs.so). If the module isn't present, attempt to build it on the fly and reload.
-# This should only happen once per installation.
-#
-try:
-    from pbs_python.fourthreefive import pbs, PBSQuery, PBSAdvancedParser
-except (NameError, ImportError) as pbs_import_err:
-    print "pbs_python module not built. Attempting to build..."
-    try:
-        #Build class compiles and installs the pbs_python package
-        pbs_python_build = Build("../../../hpc-scaler.cfg") #FIXME: too static
-    except Exception as build_err:
-        print "An error occurred building the pbs_python module. Please attempt a manual build."
-        sys.exit(0) ##Quit the program - we won't be able to speak to the Resource Manager.
-    try:
-        from pbs_python.fourthreefive import pbs, PBSQuery, PBSAdvancedParser
-    except (NameError, ImportError) as pbs_import_err:  #still unable to import, give up.
-        print "An irrecoverable error occurred importing the pbs_python module. Quitting."
-        sys.exit(0) ##Quit the program - we won't be able to speak to the Resource Manager.
-
-
-
-
-
-
 
 class TorqueDriver(ClusterDriver):
     '''
-    This driver for the Torque/PBS Resource Manager is designed to function as part of the
+    This driver for the Torque Resource Manager is designed to function as part of the
     ClusterInterface.
     '''
 
 
     def __init__(self):
         '''
-        Constructor must call Parent Constructor as per the rules specified by the ClusterDriver class.
+        Constructor
         '''
-        self.con = 0            #Variable which will hold the socket connection to a torque server.
-        super(TorqueDriver, self).__init__()    #Return control to parent constructor.
+        self.nodes = []         #An array of the worker nodes (of type Node) of the cluster
+        self.idlenodes = []     #An array of nodes that are idle (i.e no jobs currently running)
+        self.fullnodes = []     #An array of nodes that are at maximum cpu core usage
 
     def connect(self, host=None):
         try:
             if host == None:
                 pbs_server = pbs.pbs_default()
-                #print "pbs_server is %s" % pbs_server
             else:
                 pbs_server = host
             self.con = pbs.pbs_connect(pbs_server)
             if self.con:
                 self.connectionStatus = 'Connected'
-                self.serverName = pbs_server
-                print "Connected to %s" % self.serverName
-            else:
-                raise Exception("Unable to connect to Torque/PBS Server")
-                sys.exit(0) ##Quit the program - we won't be able to speak to the Resource Manager.
         except Exception, e:
             print e
 
@@ -84,8 +64,7 @@ class TorqueDriver(ClusterDriver):
             self.connectionStatus = 'Not Connected'
             self.con = 0
         else:
-            #print pbs.pbs_statserver(self.con)
-            print "retval is ",retval
+            print pbs.pbs_statserver(self.con)
 
     def getConStatus(self):
         '''
@@ -100,13 +79,16 @@ class TorqueDriver(ClusterDriver):
         '''
         Returns the FQDN of the job submission host
         '''
-        ##serverName should be already set by the connect function, but
-        # if not, use pbs_default as a fallback option.
-        if not self.serverName:
-            self.serverName = pbs.pbs_default()
-        ##Call our parent function's equivalent function as specified by the
-        # ClusterDriver template for overridden methods.
-        super(TorqueDriver, self).getServerName()
+        pbs_server = pbs.pbs_default()
+        if pbs_server:
+            self.serverName = pbs_server
+            #print "DEBUG: about to return name %s" % self.serverName
+            # Call our parent function's equivalent function as specified by the
+            # ClusterDriver template for overwritten methods.
+            super(TorqueDriver, self).getServerName()
+        else:
+            errno, text = pbs.error()
+            print errno, text
 
 
     def dumpDetails(self):
@@ -177,73 +159,22 @@ class TorqueDriver(ClusterDriver):
             #thisnode.printDetails()
             self.nodes.append(thisnode)
             self.total_nodes = len(self.nodes)
-            self.idle_nodes = len(self.idlenodes)
-        #print "number of nodes is ", self.total_nodes
-        #print "number of idle nodes is ", self.idle_nodes
+        print "number of nodes is ",self.total_nodes
+        print "number of idle nodes is ",len(self.idlenodes)
         #print "number of free cpus is ", sum(sequence)
-        PBSQuery.main()
-        help(PBSQuery)
-
-    def getJobs(self):
-        p = PBSQuery.PBSQuery()
-        self.jobs = p.getjobs()
-        self.numJobs = len(self.jobs)
-        for job_id, attributes in self.jobs.iteritems():
-            job = Job(job_id)
-            print "Job ID is %s" % job_id
-            print "Attributes:"
-            for k,v in attributes.iteritems():
-                #Resource_List contains a tuple we need to process further
-                if k == 'Resource_List':
-                    for resource,value in v.iteritems():
-                        print "resource is %s and value is %s" % (resource, value)
-                        if resource == "nodes":  #Value corresponding to nodes is in format X:ppn=Y
-                            #value is an array of one item
-                            for v in value:
-                                print "real val is %s" % v
-                                if ":" in v:    #Nodes could be colon separated with procs per node
-                                    nodes,ppnstring = v.split(":")
-                                    job.nodes = nodes
-                                    label,ppn = ppnstring.split("=")
-                                    job.ppn = ppn
-                                    print "we got a ppn over here"
-                                if len(v) > 6:
-                                    print "long value %s" % value
-                            else:
-                                print "short value %s" % value
-                                print "length", len(value)
-
-
-
-                #Check job state last, so we can add the job object to the appropriate group
-                if k == 'job_state':
-                    for item in v:
-                        if item == 'Q':
-                            job.status = 'queued'
-                            self.queuedJobs.append(job)
-                        elif item == 'R':
-                            job.status = 'running'
-                        else:
-                            job.status = 'other'    #We are not interested in complete or errored jobs.
-
-            job.printDetails()
-
 
 
 
 
 
 ##Un-comment for unit testing.
-#'''
-print "***********************************"
-print "UNIT TESTS FOR TORQUEDRIVER MODULE"
-print "***********************************"
 print "Creating new Torque Driver"
 TD = TorqueDriver()
 print "Created!"
+TD.getServerName()
+print "Server name is %s" % TD.serverName
 print "Trying to connect..."
 TD.connect()
-print "Server name is %s" % TD.serverName
 #print "Trying to disconnect..."
 #TD.disconnect()
 
@@ -251,5 +182,3 @@ print "Server name is %s" % TD.serverName
 print TD.connectionStatus
 TD.getNodes()
 TD.getIdleNodes()
-TD.getJobs()
-#'''
