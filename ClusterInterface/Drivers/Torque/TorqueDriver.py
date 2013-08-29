@@ -33,7 +33,7 @@ except (NameError, ImportError) as pbs_import_err:
     except Exception as build_err:
         print "An error occurred building the pbs_python module. Please attempt a manual build."
         sys.exit(0) ##Quit the program - we won't be able to speak to the Resource Manager.
-    try:
+    try:    ##We have built the binary - try import the module
         from pbs_python.fourthreefive import pbs, PBSQuery, PBSAdvancedParser
     except (NameError, ImportError) as pbs_import_err:  #still unable to import, give up.
         print "An irrecoverable error occurred importing the pbs_python module. Quitting."
@@ -177,42 +177,36 @@ class TorqueDriver(ClusterDriver):
         #print "number of nodes is ", self.total_nodes
         #print "number of idle nodes is ", self.idle_nodes
         #print "number of free cpus is ", sum(sequence)
-        PBSQuery.main()
-        help(PBSQuery)
 
     def getJobs(self):
         p = PBSQuery.PBSQuery()
-        self.jobs = p.getjobs()
-        self.numJobs = len(self.jobs)
-        for job_id, attributes in self.jobs.iteritems():
+        jobslist = p.getjobs()
+        self.numJobs = len(jobslist)
+        for job_id, attributes in jobslist.iteritems():
             job = Job(job_id)
-            print "Job ID is %s" % job_id
-            print "Attributes:"
             for k,v in attributes.iteritems():
                 #Resource_List contains a tuple we need to process further
                 if k == 'Resource_List':
                     for resource,value in v.iteritems():
-                        print "resource is %s and value is %s" % (resource, value)
+                        #print "resource is %s and value is %s" % (resource, value)
                         if resource == "nodes":  #Value corresponding to nodes is in format X:ppn=Y
                             #value is an array of one item
-                            for v in value:
-                                print "real val is %s" % v
-                                if ":" in v:    #Nodes could be colon separated with procs per node
-                                    nodes,ppnstring = v.split(":")
-                                    job.nodes = nodes
+                            for elem in value:
+                                if ":" in elem:    #Nodes may be colon separated with procs per node
+                                    nodes,ppnstring = elem.split(":")
+                                    job.numNodes = int(nodes)   #Cast as integer
                                     label,ppn = ppnstring.split("=")
-                                    job.ppn = ppn
-                                    print "we got a ppn over here"
-                                if len(v) > 6:
-                                    print "long value %s" % value
-                            else:
-                                print "short value %s" % value
-                                print "length", len(value)
-
-
-
+                                    job.ppn = int(ppn)          #Cast as integer
+                                    job.ncpus = job.numNodes * job.ppn  #Total CPUs requested for this job.
+                                else:   #ppn not specified so is taken to be one
+                                    job.numNodes = int(elem)
+                                    job.ppn = 1
+                                    job.ncpus = job.numNodes
+                        elif resource == "walltime":
+                            for elem in value: #resources are an array - walltime is a single item array
+                                job.walltime = elem
                 #Check job state last, so we can add the job object to the appropriate group
-                if k == 'job_state':
+                elif k == 'job_state':
                     for item in v:
                         if item == 'Q':
                             job.status = 'queued'
@@ -221,16 +215,17 @@ class TorqueDriver(ClusterDriver):
                             job.status = 'running'
                         else:
                             job.status = 'other'    #We are not interested in complete or errored jobs.
-
-            job.printDetails()
-
-
-
-
-
+                elif k == 'qtime':
+                    for elem in v:
+                        job.qtime = int(elem)
+            ##Now we have acquired all the information we need from each job. Store the job
+            # data in our self.jobs array
+            self.jobs.append(job)
+            if job.status == 'queued':
+                self.queuedJobs.append(job)
 
 ##Un-comment for unit testing.
-#'''
+'''
 print "***********************************"
 print "UNIT TESTS FOR TORQUEDRIVER MODULE"
 print "***********************************"
@@ -248,4 +243,4 @@ print TD.connectionStatus
 TD.getNodes()
 TD.getIdleNodes()
 TD.getJobs()
-#'''
+'''

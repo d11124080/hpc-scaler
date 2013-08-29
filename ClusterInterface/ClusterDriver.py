@@ -70,7 +70,18 @@ class ClusterDriver(object):
             print cept
             sys.exit(0)
 
-    def getIdleNodes(self):
+    def getJobs(self):
+        '''
+        Query the cluster to obtain information about its jobs. This function, when overridden by
+        child, should populate the clusters job list in its entirety.
+        '''
+        try: #to be implemented by child
+            raise Exception("Error - getJobs method MUST be implemented by Driver")
+        except Exception as cept:
+            print cept
+            sys.exit(0)
+
+    def listIdleNodes(self):
         '''
         Retrieve a list of idle nodes (i.e nodes which are not running jobs)
         '''
@@ -86,6 +97,11 @@ class ClusterDriver(object):
                 print "Node: %s, State: %s" % (node.hostname, node.state)
         else:
             print "There are currently no known nodes in this cluster"
+
+    def printJobs(self):
+        print "printing ",self.numJobs," jobs"
+        for job in self.jobs:
+            job.printDetails()
 
 
 

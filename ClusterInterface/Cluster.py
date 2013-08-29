@@ -74,6 +74,8 @@ try:
     name = c.interface.serverName
     print "name is",name
     c.interface.getNodes()
+    c.interface.getJobs()
+    c.interface.printJobs()
     #c.interface.dumpDetails()
     c.interface.disconnect()
 except Exception, ec:
