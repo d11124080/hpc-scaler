@@ -1,0 +1,3 @@
+Depends on: ipmitool
+Also requires configuration in the main configuration file, in a section named [Ipmi].
+At a minimum, an
