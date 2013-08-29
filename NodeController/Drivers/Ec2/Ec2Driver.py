@@ -8,7 +8,7 @@ Created on 29 Aug 2013
 try:
     import sys
     import ConfigParser
-    import boto
+    import boto.ec2
 except (NameError, ImportError) as e:
     print "Component(s) not found or not readable at default location:"
     print e
@@ -21,10 +21,9 @@ class Ec2Driver(object):
     the hpc-scaler.cfg configuration file.
     '''
 
-
     def __init__(self, cfgFile):
         '''
-        Constructor initialised some variables and reads configuration from the config file
+        Constructor initialised some variables and reads configuration from the hpc-scaler.cfg configuration file.
         '''
         # First, read the configuration file. We are only interested in the "Ec2" section
         # (The NodeController package can be a component of an application with a shared config file)
@@ -34,13 +33,101 @@ class Ec2Driver(object):
         # Obtain configuration data for the cluster we will connect to.
         self.access_key_id = config.get(config_section, "aws_access_key_id")
         self.secret_access_key = config.get(config_section, "aws_secret_access_key")
+        self.aws_region = config.get(config_section, "aws_region")
+        self.aws_ssh_key = config.get(config_section, "aws_ssh_key")
+        self.aws_ami = config.get(config_section, "aws_ami")
+        self.aws_type = config.get(config_section, "aws_type")
+
+        ##Now need to build our boto config on the fly - this saves the user having to generate a
+        #boto configuration file. See https://code.google.com/p/boto/wiki/BotoConfig for further info.
+        #
+        if not boto.config.has_section('Boto'):
+            boto.config.add_section('Boto')
+            boto.config.set('Boto', 'num_retries', '0')
+        if not boto.config.has_section('Credentials'):
+            boto.config.add_section('Credentials')
+            boto.config.set('Credentials', 'aws_access_key_id', self.access_key_id)
+            boto.config.set('Credentials', 'aws_secret_access_key', self.secret_access_key)
 
     def printDetails(self):
+        '''Print Driver object data for debugging'''
         print "access key id is %s" % self.access_key_id
         print "secret access key is %s" % self.secret_access_key
+        print "using ssh key %s" % self.aws_ssh_key
+        print "aws region is %s" % self.aws_region
+        print "ami is %s" % self.aws_ami
+        print "instance type is %s" % self.aws_type
+        print "Number of running instances: %d" % self.numRunningInstances
+        if self.runningInstances:
+            print "Instances:"
+            for i in self.runningInstances:
+                print i
+
+    def connect(self):
+        #Initiate a connection to the amazon region specified in our config file.
+        #No need to disconnect, as these API connections are over HTTPS
+        try:
+            self.conn = boto.ec2.connect_to_region(self.aws_region)
+            print "Connected: ",self.conn
+        except Exception as e:
+            print "Error occurred connecting to Amazon Web Services:"
+            print e
+
+    def disconnect(self):
+        self.conn = None    #Not really required, but why not...
+
+    def getRunningInstances(self):
+        self.runningInstances = self.conn.get_all_instances()
+        self.numRunningInstances = len(self.runningInstances)
+
+    def getKeypairs(self):
+        keypairs = self.conn.get_all_key_pairs()
+        for i in keypairs:
+            print i
+
+    def getAddresses(self):
+        self.addresses = self.conn.get_all_addresses()
+        #for i in self.addresses:
+        #   print i
+
+    def getAllImages(self):
+        '''Return a list of all available images'''
+        self.images = self.conn.get_all_images()
+
+
+    def startInstance(self):
+        '''Start an Ec2 instance based on the machine type specified in the configuration file'''
+        ##First find an unused public IP address from our pool
+        self.getAddresses()
+        self.getRunningInstances()
+        for inst in self.runningInstances:
+            pass
+
+        reservation = self.conn.run_instances(image_id=self.aws_ami, key_name=self.aws_ssh_key, instance_type=self.aws_type)
+        for r in self.conn.get_all_instances():
+            if r.id == reservation.id:
+                break
+            print r.instances[0].public_dns_name  # output: ec2-184-73-24-97.compute-1.amazonaws.com
+            self.instanceId = reservation.id
+        pass
+
+    def stopInstance(self):
+        try:
+            stoppedInstances = self.conn.stop_instances(self.instanceId)
+            if not stoppedInstances:
+                raise Exception("Unable to stop instance %s - Manual Intervention is Required")
+        except Exception as err:
+
+
 
 
 
 #Un-comment for unit testing
 ED = Ec2Driver("../../../hpc-scaler.cfg")
+
+ED.connect()
+ED.getRunningInstances()
 ED.printDetails()
+ED.getKeypairs()
+ED.startInstance()
+
