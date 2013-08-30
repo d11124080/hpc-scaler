@@ -8,7 +8,7 @@ Created on 29 Aug 2013
 try:
     import sys
     import ConfigParser
-    import boto.ec2
+    import boto
 except (NameError, ImportError) as e:
     print "Component(s) not found or not readable at default location:"
     print e
@@ -101,13 +101,14 @@ class Ec2Driver(object):
         self.getAddresses()
         self.getRunningInstances()
         for inst in self.runningInstances:
+            print inst
             pass
 
         reservation = self.conn.run_instances(image_id=self.aws_ami, key_name=self.aws_ssh_key, instance_type=self.aws_type)
         for r in self.conn.get_all_instances():
             if r.id == reservation.id:
                 break
-            print r.instances[0].public_dns_name  # output: ec2-184-73-24-97.compute-1.amazonaws.com
+            print r.instances[0].public_dns_name
             self.instanceId = reservation.id
         pass
 
@@ -117,6 +118,7 @@ class Ec2Driver(object):
             if not stoppedInstances:
                 raise Exception("Unable to stop instance %s - Manual Intervention is Required")
         except Exception as err:
+            print err
 
 
 
