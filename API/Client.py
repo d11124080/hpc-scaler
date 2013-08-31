@@ -38,7 +38,7 @@ class APIClient:
         r = requests.get(self.url, params=self.request, timeout=self.timeout)
         self.status_code = r.status_code
         if r.status_code != requests.codes.ok:
-            raise Exception("An error occurred making the request: ".r.status_code)
+            raise Exception("An error occurred making the request: ",r.status_code)
         #If our status is ok, obtain the results of the query. These results will be
         #handled by modules which extend this class.
         else:

@@ -8,7 +8,7 @@ Created on 13 June 2013
 @author: ronan
 '''
 try:
-    from Drivers.Torque.Build import Build
+    from Build import Build
     from ClusterDriver import ClusterDriver
     from Node import Node
     from Job import Job
@@ -172,15 +172,23 @@ class TorqueDriver(ClusterDriver):
                     #print "attrib is",attrib.name,"and value is",attrib.value
             #thisnode.printDetails()
             self.nodes.append(thisnode)
-            self.total_nodes = len(self.nodes)
-            self.idle_nodes = len(self.idlenodes)
+            if thisnode.state == 'down':
+                self.downnodes.append(thisnode)
+        self.total_nodes = len(self.nodes)
+        self.idle_nodes = len(self.idlenodes)
+        self.down_nodes = len(self.downnodes)
         #print "number of nodes is ", self.total_nodes
+        #print "number of down nodes is",self.down_nodes
         #print "number of idle nodes is ", self.idle_nodes
         #print "number of free cpus is ", sum(sequence)
+        print "got nodes"
 
     def getJobs(self):
-        p = PBSQuery.PBSQuery()
-        jobslist = p.getjobs()
+        self.numCpusInUse = 0
+        #p = PBSQuery.PBSQuery()
+
+        #jobslist = p.getjobs()
+        jobslist = pbs.pbs_statjob(self.con, "", "NULL", "NULL")
         self.numJobs = len(jobslist)
         for job_id, attributes in jobslist.iteritems():
             job = Job(job_id)
@@ -205,6 +213,9 @@ class TorqueDriver(ClusterDriver):
                         elif resource == "walltime":
                             for elem in value: #resources are an array - walltime is a single item array
                                 job.walltime = elem
+                elif k == 'qtime':
+                    for elem in v:
+                        job.qtime = int(elem)
                 #Check job state last, so we can add the job object to the appropriate group
                 elif k == 'job_state':
                     for item in v:
@@ -213,16 +224,17 @@ class TorqueDriver(ClusterDriver):
                             self.queuedJobs.append(job)
                         elif item == 'R':
                             job.status = 'running'
+                            self.numCpusInUse += job.ncpus
                         else:
                             job.status = 'other'    #We are not interested in complete or errored jobs.
-                elif k == 'qtime':
-                    for elem in v:
-                        job.qtime = int(elem)
+
             ##Now we have acquired all the information we need from each job. Store the job
             # data in our self.jobs array
             self.jobs.append(job)
-            if job.status == 'queued':
-                self.queuedJobs.append(job)
+        self.numQueuedJobs = len(self.queuedJobs)
+        print "got jobs"
+        p = None
+
 
 ##Un-comment for unit testing.
 '''
@@ -241,6 +253,8 @@ print "Server name is %s" % TD.serverName
 #TD.dumpDetails()
 print TD.connectionStatus
 TD.getNodes()
-TD.getIdleNodes()
+TD.listNodes()
 TD.getJobs()
-'''
+TD.numDownNodes
+#TD.printJobs()
+#'''

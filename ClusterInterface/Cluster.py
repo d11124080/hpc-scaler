@@ -34,13 +34,13 @@ class Cluster(object):
         self.driverPath = config.get(config_section, "driver_path")
         self.driver = config.get(config_section, "cluster_driver")
 
-        # Attempt to load our driver, which creates a driver interface within our
+        ## Attempt to load our driver, which creates an interface to the driver within our
         # cluster object.
         self.loadDriver()
         #print "DEBUG: Created a new cluster named %s which uses the %s Driver" % (self.name, self.driver)
         #Call buildCluster to populate the cluster node data
         #print "now going to build cluster"
-        #self.buildCluster()
+        self.buildCluster()
 
     def loadDriver(self):
         '''
@@ -65,23 +65,28 @@ class Cluster(object):
         Populates the Cluster instance with information about the clusters nodes using
         the interface created by loadDriver.
         '''
+        pass
         #self.interface.getNodes()
+        #self.interface.getJobs()
 
 ##Uncomment for unit testing
-'''
-c = Cluster("../hpc-scaler.cfg")
-try:
-    c.interface.connect()
-    name = c.interface.serverName
-    print "name is",name
-    c.interface.getNodes()
-    c.interface.getJobs()
-    c.interface.printJobs()
-    c.interface.getLongestWait()
-    #c.interface.dumpDetails()
-    c.interface.disconnect()
-except Exception, ec:
-    print ec
+#'''
+#c = Cluster("../hpc-scaler.cfg")
+#try:
+##name = c.interface.serverName
+#print "name is",name
+#c.interface.getNodes()
+#c.interface.listNodes()
+#c.interface.getJobs()
+#c.interface.printJobs()
+#print dir(c.interface)
+#c.interface.getJobs()
+#c.interface.printJobs()
+# c.interface.getLongestWait()
+#c.interface.dumpDetails()
+#c.interface.disconnect()
+#except Exception, ec:
+#print ec
 #d = Cluster("timmys cluster", "NonExistantDriver", "Drivers/")
 #try:
 #    d.interface.dumpDetails()
@@ -92,7 +97,7 @@ except Exception, ec:
 #    f.interface.dumpDetails()
 #except Exception, ef:
 #    print ef
-'''
+#'''
 
 
 

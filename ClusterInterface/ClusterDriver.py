@@ -16,6 +16,8 @@ class ClusterDriver(object):
     Template Class which defines how a vendor-specific Driver should be implemented.
     Subclass Methods which override the implemented (i.e non-"pass")methods of this class,
     including Constructor methods, MUST call the parent method on completion.
+    Some methods are required to be overridden. These methods will raise an exception
+    if called directly from the parent, and are indicated as such.
     '''
 
 
@@ -26,6 +28,7 @@ class ClusterDriver(object):
         '''
         self.nodes = []         #An array of the worker nodes (of type Node) of the cluster
         self.idlenodes = []     #An array of nodes that are idle (i.e no jobs currently running)
+        self.downnodes = []     #An array of nodes that are down (i.e powered off)
         self.fullnodes = []     #An array of nodes that are at maximum cpu core usage
         self.jobs = []          #An array of jobs of all status
         self.queuedJobs = []    #An array of all jobs currently in the queue
@@ -88,6 +91,7 @@ class ClusterDriver(object):
         if self.idlenodes:
             for node in self.idlenodes:
                 print "Idle Node: %s, State: %s" % (node.hostname, node.state)
+
     def listNodes(self):
         '''
         Prints a list of nodes and their state
@@ -104,13 +108,22 @@ class ClusterDriver(object):
             job.printDetails()
 
     def getLongestWait(self):
-        '''Find the Job which has been queued the longest'''
-        longest_wait_t = 0
-        for job in self.jobs:
-            if job.tiq > longest_wait_t:
-                longest_wait_t = job.tiq
-                longest_wait_job = job.jobId
-        print "Job %s has been waiting the longest, at %d" % (longest_wait_job, longest_wait_t)
+        '''Find the Job which has been queued the longest - used for longestqueued strategy'''
+        print "getting longest wait"
+        longest_wait_time = 0
+        if self.jobs:
+            for job in self.jobs:
+                job.getQueueTime()
+                if job.tiq > longest_wait_time:
+                    longest_wait_time = job.tiq
+                    self.longest_wait_job = job.jobId
+                    self.longest_wait_nodes = job.numNodes
+                    self.longest_wait_ppn = job.ppn
+                    self.longest_wait_ncpus = job.ncpus
+                    self.longest_wait_time = longest_wait_time
+
+
+
 
 
 
