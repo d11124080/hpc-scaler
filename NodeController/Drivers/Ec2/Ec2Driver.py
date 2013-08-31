@@ -116,7 +116,7 @@ class Ec2Driver(object):
         try:
             stoppedInstances = self.conn.stop_instances(self.instanceId)
             if not stoppedInstances:
-                raise Exception("Unable to stop instance %s - Manual Intervention is Required")
+                raise Exception("Unable to stop instance %s - Manual Intervention is Required" % self.instanceId)
         except Exception as err:
             print err
 
@@ -125,6 +125,7 @@ class Ec2Driver(object):
 
 
 #Un-comment for unit testing
+'''
 ED = Ec2Driver("../../../hpc-scaler.cfg")
 
 ED.connect()
@@ -132,4 +133,4 @@ ED.getRunningInstances()
 ED.printDetails()
 ED.getKeypairs()
 ED.startInstance()
-
+'''

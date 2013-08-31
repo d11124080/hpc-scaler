@@ -68,6 +68,7 @@ class Cluster(object):
         #self.interface.getNodes()
 
 ##Uncomment for unit testing
+'''
 c = Cluster("../hpc-scaler.cfg")
 try:
     c.interface.connect()
@@ -91,7 +92,7 @@ except Exception, ec:
 #    f.interface.dumpDetails()
 #except Exception, ef:
 #    print ef
-
+'''
 
 
 
