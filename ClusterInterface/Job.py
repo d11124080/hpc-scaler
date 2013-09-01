@@ -45,6 +45,10 @@ class Job(object):
         print "Req'd Nodes: \t %s" % self.numNodes
         print "CPUs Per Node: \t %s" % self.ppn
         print "Walltime : \t %s" % self.walltime
+        if self.properties:
+            print "Properties:"
+            for prop in self.properties:
+                print prop+" "
         if self.nodes:
             print "Nodes:"
             for node in self.nodes:

@@ -146,16 +146,21 @@ class DCSE(object):
             msg = LogEntry(self.logFile, "Using validated DCSE configuration from %s" % self.cfgPath)  #FIXME: static
             msg.show()
         except ConfigParser.NoSectionError as section_err:
-            print "The Configuration file does not contain a valid [General] section."
+            error = LogEntry(self.logFile, "The Configuration file does not contain a valid [General] section.")
+            error.show()
+            sys.exit(0)
         except ConfigParser.NoOptionError as invalid_cfg_err:
-            print "A required configuration item was not found in the configuration file:"
-            print invalid_cfg_err
+            error = LogEntry(self.logFile, "A required configuration item was not found in the configuration file: %s" % invalid_cfg_err)
+            error.show()
+            sys.exit(0)
         except ConfigErrorException as cfg_err:
-            print "A configuration error was encountered in %s:" % self.cfg
-            print cfg_err
+            error = LogEntry(self.logFile, "A configuration error was encountered in %s: %s" % (self.cfg,cfg_err))
+            error.show()
+            sys.exit(0)
         except Exception as err:
-            print "An unknown error occurred reading the configuration file at %s:" % self.cfgPath
-            print err
+            error= LogEntry(self.logFile, "An unknown error occurred reading the configuration file at %s: %s" % (self.cfgPath,err))
+            error.show()
+            sys.exit(0)
 
     def createCluster(self):
         '''
@@ -192,7 +197,7 @@ class DCSE(object):
             self.Cluster.interface.connect()    #Make a connection to the cluster
             self.Cluster.interface.getNodes()   #Populate our node lists via the cluster interface
             self.Cluster.interface.getJobs()    #Populate our job lists via the cluster interface
-            self.Cluster.interface.getLongestWait() #Find the job which has been queued the longest
+
 
             #Now break down nodes into full, idle, and down.
             numFullNodes = len(self.Cluster.interface.fullnodes)
@@ -202,11 +207,12 @@ class DCSE(object):
             numJobs = len(self.Cluster.interface.jobs)
             numQueuedJobs = len(self.Cluster.interface.queuedJobs)
             #Get data about longest waiting job
-            self.Cluster.interface.printJobs()
-            longestWait = self.Cluster.interface.longest_wait_time
-            longWaitNodes = self.Cluster.interface.longest_wait_nodes
-            longWaitPpn = self.Cluster.interface.longest_wait_ppn
+            self.Cluster.interface.getLongestWait()  #Find the job which has been queued the longest
+            longestWait = self.Cluster.interface.longest_wait_time      #Time waited, in seconds
+            longWaitNodes = self.Cluster.interface.longest_wait_nodes   #Nodes requested
+            longWaitPpn = self.Cluster.interface.longest_wait_ppn       #CPUs per node requested
 
+            #Print some summary information on each iteration
             nodesMsg = LogEntry(self.logFile, "Found %d idle nodes and %d down nodes" % (numIdleNodes, numDownNodes))
             nodesMsg.show()
             jobsMsg = LogEntry(self.logFile, "Found %d queued jobs out of %d jobs total" % (numQueuedJobs, numJobs))
@@ -214,12 +220,22 @@ class DCSE(object):
             waitMsg = LogEntry(self.logFile, "Longest wait has been %d seconds for %d nodes of %d cpus each" \
                                % (longestWait, longWaitNodes, longWaitPpn))
             waitMsg.show()
-            print "Longest job is waiting ",longestWait,"for",longWaitNodes,"nodes, with ",longWaitPpn,"CPU per node"
 
+
+
+
+            ## Terminate the connection to the pbs_server rather than waiting for a timeout -
+            # otherwise the server eventually hits its resource limit.
+            self.Cluster.interface.disconnect()
         except Exception as e:
             print e
-        finally:
-            self.Cluster.interface.disconnect()
+
+
+        def longestQueued(self, nodes, ppn, properties=[]):
+            '''
+            Function to power on the nodes needed to satisfy the longestqueued strategy
+            '''
+            self.Cluster.interface.getMinNodes(num_nodes, ppn, props=[])
 
 
 
@@ -232,9 +248,10 @@ class LogEntry(object):
     def __init__(self, logFile, msg):
         #Any exception must be caught here, so that only logging is affected
         self.msg = msg
+        self.time = datetime.datetime.now()
         try:
             fh = open(logFile, 'a')
-            fh.write(msg+"\n")
+            fh.write("%s %s\n" % (self.time,self.msg))
         except IOError as ioe:
             print "An error occurred opening the logfile %s:" % logFile
         finally:
@@ -251,7 +268,7 @@ class ConfigErrorException(Exception):
 
 ##Global functions
 def isInt(num):
-    '''Check whether a string value is an integer (isinstance(x, int) will not work for string-stored integers)'''
+    '''Check whether a string value is an integer ( isinstance(x, int) will not work for string-stored integers)'''
     try:
         float(num)
         return True

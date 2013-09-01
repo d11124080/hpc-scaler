@@ -120,7 +120,30 @@ class ClusterDriver(object):
                     self.longest_wait_nodes = job.numNodes
                     self.longest_wait_ppn = job.ppn
                     self.longest_wait_ncpus = job.ncpus
+                    self.longest_wait_props = job.properties
                     self.longest_wait_time = longest_wait_time
+
+    def getMinNodes(self, num_nodes, ppn, props=[]):
+        '''
+        Function to obtain the minimal resources required to satisfy a given number
+        of nodes, cpus per node, and a specific set of properties. Should return a list
+        of hostnames
+        '''
+        suitableNodes = []                  #Array to hold suitable nodes
+        for node in self.nodes:
+            #Set an initial flag to determine if the node being examined right now is suitable
+            thisnode = True;                 #Useful until it proves otherwise!
+            if node.state == 'down':         #Only nodes which are currently down are suitable, obviously!
+                if node.num_cpus >= ppn:     #Node will need to equal or exceed the requested ppn
+                    ##Now make sure node satisfies all the properties requested by the job. Check
+                    # each requested property in sequence
+                    for prop in props:
+                        if prop not in node.properties:
+                            thisnode = False    #This node doesn't have at least one of the properties we wanted.
+                    #All properties have been checked, check our flag
+                    if thisnode == True:
+                        suitableNodes.append(node.hostname)
+
 
 
 

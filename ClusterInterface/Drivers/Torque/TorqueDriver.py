@@ -188,56 +188,67 @@ class TorqueDriver(ClusterDriver):
         #p = PBSQuery.PBSQuery()
 
         #jobslist = p.getjobs()
-        jobslist = pbs.pbs_statjob(self.con, "", "NULL", "NULL")
-        self.numJobs = len(jobslist)
-        for job_id, attributes in jobslist.iteritems():
-            job = Job(job_id)
-            for k,v in attributes.iteritems():
-                #Resource_List contains a tuple we need to process further
-                if k == 'Resource_List':
-                    for resource,value in v.iteritems():
-                        #print "resource is %s and value is %s" % (resource, value)
-                        if resource == "nodes":  #Value corresponding to nodes is in format X:ppn=Y
-                            #value is an array of one item
-                            for elem in value:
-                                if ":" in elem:    #Nodes may be colon separated with procs per node
-                                    nodes,ppnstring = elem.split(":")
-                                    job.numNodes = int(nodes)   #Cast as integer
-                                    label,ppn = ppnstring.split("=")
-                                    job.ppn = int(ppn)          #Cast as integer
-                                    job.ncpus = job.numNodes * job.ppn  #Total CPUs requested for this job.
-                                else:   #ppn not specified so is taken to be one
-                                    job.numNodes = int(elem)
-                                    job.ppn = 1
-                                    job.ncpus = job.numNodes
-                        elif resource == "walltime":
-                            for elem in value: #resources are an array - walltime is a single item array
-                                job.walltime = elem
-                elif k == 'qtime':
-                    for elem in v:
-                        job.qtime = int(elem)
-                #Check job state last, so we can add the job object to the appropriate group
-                elif k == 'job_state':
-                    for item in v:
-                        if item == 'Q':
-                            job.status = 'queued'
-                            self.queuedJobs.append(job)
-                        elif item == 'R':
-                            job.status = 'running'
-                            self.numCpusInUse += job.ncpus
-                        else:
-                            job.status = 'other'    #We are not interested in complete or errored jobs.
 
+        jobslist = pbs.pbs_statjob(self.con, "", "NULL", "NULL")
+        for jobInst in jobslist:
+            job = Job(jobInst.name)
+            #print "name is"+jobInst.name+"text is",jobInst.text,"next is",jobInst.next,"and this is",jobInst.this
+            for attrib in jobInst.attribs:
+                #print attrib.name+" is the name and the value is "+attrib.value
+                if attrib.name == 'Resource_List':
+                    if attrib.resource == "nodes":  #Value corresponding to nodes is in format (nodes=)X:ppn=Y[:property1[:propertyN]]
+                            #value is an array of one item
+                            if ":" in attrib.value:    #Node data may be colon separated with procs per node and node properties
+                                #print "value for nodes is %s" % attrib.value
+                                #nodes,ppnstring = attrib.value.split(":")
+
+                                nodeDataList = attrib.value.split(":")
+                                job.numNodes = nodeDataList[0]
+                                iterNum = 0     ##Needed to iterate through our properies and skip the first one.
+                                for item in nodeDataList:
+                                    if "=" in item:         #An equals suggests a nodes= or ppn= assignment
+                                        label,value = item.split("=")
+                                        if label == 'ppn':
+                                            job.ppn = int(value)
+                                        ##No else, as it would match the walltime entry!
+                                    else:       #No equals sign means this is a property
+                                        if iterNum > 0: ##unless its the num_nodes int we stripped off earlier!
+                                            job.properties.append(item)
+                                    iterNum += 1
+                            else:   #ppn not specified so is taken to be one
+                                job.numNodes = int(attrib.value)
+                                job.ppn = 1
+                                job.ncpus = job.numNodes
+                    elif attrib.resource == "walltime":
+                        job.walltime = attrib.value
+                    elif attrib.resource == "nodect":
+                        job.nodect = attrib.value
+                    else:
+                        print "attrib resource is %s" % attrib.resource
+                elif attrib.name == 'qtime':
+                    job.qtime = int(attrib.value)
+                elif attrib.name == 'job_state':
+                    if attrib.value == 'Q':
+                        job.status = 'queued'
+                        self.queuedJobs.append(job)
+                    elif attrib.value == 'R':
+                        job.status = 'running'
+                        self.numCpusInUse += job.ncpus
+                    else:
+                        job.status = 'other'    #We are not interested in complete or errored jobs.
+                else:
+                    pass
+                    #print "Attrib name is %s and value is %s" % (attrib.name, attrib.value)
             ##Now we have acquired all the information we need from each job. Store the job
             # data in our self.jobs array
             self.jobs.append(job)
+        self.numJobs = len(self.jobs)
         self.numQueuedJobs = len(self.queuedJobs)
         print "got jobs"
-        p = None
 
 
 ##Un-comment for unit testing.
-'''
+#'''
 print "***********************************"
 print "UNIT TESTS FOR TORQUEDRIVER MODULE"
 print "***********************************"
@@ -255,6 +266,7 @@ print TD.connectionStatus
 TD.getNodes()
 TD.listNodes()
 TD.getJobs()
-TD.numDownNodes
 #TD.printJobs()
+#TD.numDownNodes
+TD.printJobs()
 #'''
