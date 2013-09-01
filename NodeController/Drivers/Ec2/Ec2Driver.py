@@ -6,25 +6,31 @@ Created on 29 Aug 2013
 @author: ronan
 '''
 try:
+    from CloudNode import CloudNode
     import sys
     import ConfigParser
-    import boto
+    import boto.ec2
+    import socket
 except (NameError, ImportError) as e:
     print "Component(s) not found or not readable at default location:"
     print e
     sys.exit(0)
 
 
-class Ec2Driver(object):
+
+class Ec2Driver(CloudNode):
     '''
     Amazon Elastic Compute Cloud Driver for the hpc-scaler NodeController. Requires configuration in
     the hpc-scaler.cfg configuration file.
     '''
 
-    def __init__(self, cfgFile):
+    def __init__(self, cfgFile, hostname):
         '''
         Constructor initialised some variables and reads configuration from the hpc-scaler.cfg configuration file.
         '''
+        #take in hostname
+        self.hostname = hostname
+        self.ipAddr = socket.gethostbyname(hostname)
         # First, read the configuration file. We are only interested in the "Ec2" section
         # (The NodeController package can be a component of an application with a shared config file)
         config = ConfigParser.RawConfigParser()
@@ -37,6 +43,17 @@ class Ec2Driver(object):
         self.aws_ssh_key = config.get(config_section, "aws_ssh_key")
         self.aws_ami = config.get(config_section, "aws_ami")
         self.aws_type = config.get(config_section, "aws_type")
+        self.aws_suffix = config.get(config_section, "aws_suffix")
+
+        # Get the Public IP associated with this hostname
+        try:
+            self.ec2Addr = socket.gethostbyname(self.hostname+"."+self.aws_suffix)
+        except socket.error as error:
+            #re-raise our exception to the calling class
+            raise Exception("Error resolving %s.%s - %s" % (self.hostname,self.aws_suffix,error))
+        if not self.ec2Addr:       # Should be caught by socket.error, but in case another error occurred
+            raise Exception("Unexpected error in EC2 driver when assigning address.")
+
 
         ##Now need to build our boto config on the fly - this saves the user having to generate a
         #boto configuration file. See https://code.google.com/p/boto/wiki/BotoConfig for further info.
@@ -71,7 +88,7 @@ class Ec2Driver(object):
             print "Connected: ",self.conn
         except Exception as e:
             print "Error occurred connecting to Amazon Web Services:"
-            print e
+            raise Exception(e)  ##Re-raise exception
 
     def disconnect(self):
         self.conn = None    #Not really required, but why not...
@@ -95,7 +112,7 @@ class Ec2Driver(object):
         self.images = self.conn.get_all_images()
 
 
-    def startInstance(self):
+    def powerOn(self):
         '''Start an Ec2 instance based on the machine type specified in the configuration file'''
         ##First find an unused public IP address from our pool
         self.getAddresses()
@@ -125,12 +142,12 @@ class Ec2Driver(object):
 
 
 #Un-comment for unit testing
-'''
-ED = Ec2Driver("../../../hpc-scaler.cfg")
+#'''
+ED = Ec2Driver("../../../hpc-scaler.cfg", None)
 
 ED.connect()
 ED.getRunningInstances()
 ED.printDetails()
 ED.getKeypairs()
-ED.startInstance()
-'''
+#ED.startInstance()
+#'''

@@ -39,19 +39,14 @@ class IpmiDriver(HardwareNode):
         ##Ipmi interfaces usually have different IP addresses to their
         #communications IP. Try to resolve this hostname with a .ipmi
         #suffix.
-
         #print "DEBUG:looking up address for %s" % self.host
         try:
-            self.ipmiAddr = socket.gethostbyname(self.host+self.suffix)
+            self.ipmiAddr = socket.gethostbyname(self.host+"."+self.suffix)
         except socket.error as error:
-            #try:
-                raise Exception("Error resolving %s.%s - %s" % (self.host,self.suffix,error))
-            #except Exception as e:
-               # print "e is",e
-        if not self.ipmiAddr:
-            raise Exception("uh oh")
-        else:
-            print self.ipmiAddr
+            #re-raise our exception to the calling class
+            raise Exception("Error resolving %s.%s - %s" % (self.host,self.suffix,error))
+        if not self.ipmiAddr:       # Should be caught by socket.error, but in case another error occurred
+            raise Exception("Unexpected error in IPMI driver when assigning address.")
 
     def getConfig(self):
         try:

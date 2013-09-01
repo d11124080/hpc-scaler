@@ -35,12 +35,10 @@ class Cluster(object):
         self.driver = config.get(config_section, "cluster_driver")
 
         ## Attempt to load our driver, which creates an interface to the driver within our
-        # cluster object.
+        # cluster object at Cluster.interface
         self.loadDriver()
         #print "DEBUG: Created a new cluster named %s which uses the %s Driver" % (self.name, self.driver)
-        #Call buildCluster to populate the cluster node data
-        #print "now going to build cluster"
-        self.buildCluster()
+
 
     def loadDriver(self):
         '''

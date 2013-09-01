@@ -149,10 +149,13 @@ class ClusterDriver(object):
                     ##Now make sure node satisfies all the properties requested by the job. Check
                     # each requested property in sequence
                     for prop in props:
+                        #print "DEBUG: checking prop %s" % prop
                         if prop not in node.properties:
                             thisnode = False    #This node doesn't have at least one of the properties we wanted.
+                        else:
+                            print "node %s has property %s" % (node.hostname,prop)
                     #All properties have been checked, check our flag
-                    if thisnode == True:
+                    if thisnode is True:
                         self.suitableNodes.append(node)
 
         ##Now establish the set of resources to recommend provisioning
@@ -160,8 +163,7 @@ class ClusterDriver(object):
         for node in self.suitableNodes:
             while len(self.recommendedNodes) < num_nodes:   #No need to return more nodes than the job is requesting!
                 self.recommendedNodes.append(node)
-                print "selected ",node.hostname
-                print len(self.recommendedNodes)
+                #print "DEBUG: selected ",node.hostname
 
 
 

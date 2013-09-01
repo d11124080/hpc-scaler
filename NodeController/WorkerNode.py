@@ -28,7 +28,7 @@ class WorkerNode(object):
         self.cfgFile = configFile
         self.nodeName = nodeName
         self.nodeType = nodeType
-        print "nodename is %s and type is %s and config is %s" % (nodeName,nodeType,configFile)
+        #print "DEBUG: nodename is %s and type is %s and config is %s" % (nodeName,nodeType,configFile)
         # First, read the configuration file. We are only interested in the "NodeController" section
         # (The NodeController package can be a component of an application with a shared config file)
         config = ConfigParser.RawConfigParser()
@@ -41,11 +41,11 @@ class WorkerNode(object):
         elif nodeType == 'cloud':
             self.driver = config.get(config_section, "cloud_driver")
         else:
-            print "Error: no driver for node type %s" % nodeType
+            raise Exception("Error: no driver for node type %s" % nodeType)
 
         ## Attempt to load our drivers, which creates an interface to the driver within our
         # cluster object.
-        print "loading driver"
+        #print "DEBUG: loading driver"
         self.loadDriver()
 
     def loadDriver(self):

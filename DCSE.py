@@ -27,7 +27,7 @@ class DCSE(object):
     def __init__(self, cfgFile):
         ##Find the directory we are working in
         self.basedir = os.path.dirname(__file__)+'/'
-        print "Running DCSE from %s" % self.basedir
+        #print "DEBUG: Running DCSE from %s" % self.basedir
         self.cfg = cfgFile
         #first, read, validate, and process our configuration file
         self.readConfig()
@@ -47,7 +47,7 @@ class DCSE(object):
                 #
                 self.startEngine()
                 self.Cluster = None #kill existing cluster data for next iteration.
-                print "zzz...%s" % self.checkInterval
+                #print "DEBUG: zzz...%s seconds" % self.checkInterval
                 time.sleep(int(self.checkInterval))
                 runcount += 1
             except KeyboardInterrupt as ctrlc:
@@ -143,7 +143,7 @@ class DCSE(object):
             elif int(self.checkInterval) < 5:
                 raise ConfigErrorException("'check_interval' must be greater than five seconds. Currently '%s'" % self.checkInterval)
 
-            #Inform the console (and the logs) of the validated confiduration we are using
+            #Inform the console (and the logs) of the validated configuration we are using
             msg = LogEntry(self.logFile, "Using validated DCSE configuration from %s" % self.cfgPath)  #FIXME: static
             msg.show()
         except ConfigParser.NoSectionError as section_err:
@@ -152,15 +152,18 @@ class DCSE(object):
             sys.exit(0)
         except ConfigParser.NoOptionError as invalid_cfg_err:
             error = LogEntry(self.logFile, "A required configuration item was not found in the configuration file: %s" % invalid_cfg_err)
+            error.write()
             error.show()
             sys.exit(0)
         except ConfigErrorException as cfg_err:
             error = LogEntry(self.logFile, "A configuration error was encountered in %s: %s" % (self.cfg,cfg_err))
+            error.write()
             error.show()
             sys.exit(0)
         except Exception as err:
             error= LogEntry(self.logFile, "An unknown error occurred reading the configuration file at %s: %s" % (self.cfgPath,err))
             error.show()
+            error.write()
             sys.exit(0)
 
     def createCluster(self):
@@ -216,14 +219,20 @@ class DCSE(object):
 
             #Print some summary information on each iteration
             nodesMsg = LogEntry(self.logFile, "Found %d idle nodes and %d down nodes" % (numIdleNodes, numDownNodes))
-            #nodesMsg.show()
+            nodesMsg.show()
             jobsMsg = LogEntry(self.logFile, "Found %d queued jobs out of %d jobs total" % (numQueuedJobs, numJobs))
-            #jobsMsg.show()
-            waitMsg = LogEntry(self.logFile, "Longest wait has been %d seconds for %d nodes of %d cpus each" \
-                               % (longestWait, longWaitNodes, longWaitPpn))
-            #waitMsg.show()
+            jobsMsg.show()
 
-            self.longestQueuedStrategy(longWaitNodes, longWaitPpn, longWaitProps)
+
+            ## Now execute our chosen strategy
+            if self.strategy == 'longestqueued':
+                waitMsg = LogEntry(self.logFile, "Longest wait has been %d seconds for %d nodes of %d cpus each" \
+                               % (longestWait, longWaitNodes, longWaitPpn))
+                #waitMsg.show()
+                waitMsg.write()
+                self.longestQueuedStrategy(longWaitNodes, longWaitPpn, longWaitProps)
+            elif self.strategy == 'bestfit':
+                pass
 
             #Decide if there is demand or there isn't.
             if numIdleNodes > 0:    #If there is at least one idle node, demand is for specific node properties
@@ -245,31 +254,65 @@ class DCSE(object):
         #    print e
 
 
-    def longestQueuedStrategy(self, nodes, ppn, properties=[]):
+    def longestQueuedStrategy(self, nodes, ppn, properties):
         '''
         Function to power on the nodes needed to satisfy the longestqueued strategy
         '''
-        self.Cluster.interface.getMinNodes(nodes, ppn, props=[])
-        #print "DEBUG: Nodes available that meet the criteria:"
-        #for node in self.Cluster.interface.suitableNodes:
-           # print node.hostname
+        self.Cluster.interface.getMinNodes(nodes, ppn, properties)
+        print "DEBUG: Nodes available that meet the criteria:"
+        for node in self.Cluster.interface.suitableNodes:
+            print node.printDetails()
 
+        ##Copy our recommendedNodes array. We can use this to add additional nodes to
+        # the list we've already tried (in case substitutons are needed) to save modifying
+        # an object which is being iterated through.
+        #
+        triednodes = self.Cluster.interface.recommendedNodes
         #print "DEBUG: Nodes selected to fulfill this request:"
         for node in self.Cluster.interface.recommendedNodes:
             #print node.hostname
-            #New worker node object creates a WorkerNode interface
-            try:
-                Worker = WorkerNode(self.cfgPath,node.hostname,node.nodeType)
-                Worker.interface.printConfig()
-            ##Log and output the error if we weren't able to start a node, but
-            #stay looping through the other nodes - The node shortage will be
-            #remedied on the next iteration of the Engine.
+            #print "DEBUG:\n",node.printDetails()
+            ##New worker node object creates a WorkerNode interface
+            # May need to recursively call this until we get success - some nodes may not be
+            # contactable due to failure, maintenance, etc.
             #
-            except Exception as node_contact_error:
-                msg = LogEntry(self.logFile, "An error occurred communicating with node %s: %s" % (node.hostname,node_contact_error))
-                msg.show()
+            successFlag = False
+            while (successFlag == False):
+                try:
+                    Worker = WorkerNode(self.cfgPath,node.hostname,node.nodeType)
+                    #print "--------------\nDEBUG\n-------------\n",Worker.interface.printConfig(),"\n----------------"
+                    Worker.interface.powerOn()
+                    #No exceptions thus far means we can flag this operation a success!
+                    successFlag = True
+                    ##Log and output the error if we weren't able to start a node, but
+                    # also try to find an alternative node from the suitable nodes list
+                    #
+                except Exception as node_contact_error:
+                    msg = LogEntry(self.logFile, "An error occurred communicating with node %s: %s" % (node.hostname,node_contact_error))
+                    msg.show()
+                    msg.write()
+                    #Fetch an alternative node that isn't already on the recommendedNodes list.
 
+                    node = self.getAlternative(self.Cluster.interface.suitableNodes, self.Cluster.interface.recommendedNodes)
+                    time.sleep(10)
 
+    def getAlternative (self, suitables, trieds):
+        '''
+        Given a list of suitable nodes and a list of nodes already tried,
+        return a suitable node to use as an alternative
+        '''
+        if not suitables:
+            raise Exception("A list of suitable nodes must be provided")
+        elif not trieds:
+            raise Exception("A list of tried nodes must be provided")
+        else:
+            for node in suitables:
+                if node not in trieds:
+                    return node
+
+    def bestFitStrategy(self):
+        '''Function to power on enough nodes to satisfy the maximum possible of the queue'''
+        pass
 
 
 
@@ -281,11 +324,14 @@ class LogEntry(object):
         #Any exception must be caught here, so that only logging is affected
         self.msg = msg
         self.time = datetime.datetime.now()
+        self.logFile = logFile
+
+    def write(self):
         try:
-            fh = open(logFile, 'a')
+            fh = open(self.logFile, 'a')
             fh.write("%s %s\n" % (self.time,self.msg))
         except IOError as ioe:
-            print "An error occurred opening the logfile %s:" % logFile
+            print "An error occurred opening the logfile %s:" % self.logFile
         finally:
             fh.close()
 
