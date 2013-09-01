@@ -14,7 +14,7 @@ Created on 3 Aug 2013
 
 from ClusterInterface.Cluster import Cluster
 from ClusterInterface.Job import Job
-from NodeController import CloudNode,HardwareNode
+from WorkerNode import WorkerNode
 import ConfigParser
 import os
 import sys
@@ -32,10 +32,10 @@ class DCSE(object):
         #first, read, validate, and process our configuration file
         self.readConfig()
 
-        count = 0
+        runcount = 0
         ## Daemonise process in an infinite loop
         while True:
-            #try:
+            try:
                 ##Now create our cluster object which invokes the ClusterInterface, giving
                 # us access to the ClusterInterface's methods via self.Cluster.interface
                 #
@@ -49,9 +49,10 @@ class DCSE(object):
                 self.Cluster = None #kill existing cluster data for next iteration.
                 print "zzz...%s" % self.checkInterval
                 time.sleep(int(self.checkInterval))
-                count += 1
-                print "ran %d times" % count
-
+                runcount += 1
+            except KeyboardInterrupt as ctrlc:
+                #Close any existing connection to our cluster interface
+                self.Cluster.interface.disconnect()
             #except Exception as e:
                # print e
 
@@ -186,11 +187,11 @@ class DCSE(object):
 
 
     def startEngine(self):
-        '''
-        This function carries out the checks and power-ons/offs that are the core functionality
-        of the Dynamic Cluster Scaling Engine
-        '''
-        try:
+            '''
+            This function carries out the checks and power-ons/offs that are the core functionality
+            of the Dynamic Cluster Scaling Engine
+            '''
+            #try:
             ## First, check the current state of utilisation of the cluster.
             # i.e are we currently over-provisioned or under-provisioned?
             # Then we can determine which method to invoke
@@ -211,15 +212,28 @@ class DCSE(object):
             longestWait = self.Cluster.interface.longest_wait_time      #Time waited, in seconds
             longWaitNodes = self.Cluster.interface.longest_wait_nodes   #Nodes requested
             longWaitPpn = self.Cluster.interface.longest_wait_ppn       #CPUs per node requested
+            longWaitProps = self.Cluster.interface.longest_wait_props   #Node properties requested
 
             #Print some summary information on each iteration
             nodesMsg = LogEntry(self.logFile, "Found %d idle nodes and %d down nodes" % (numIdleNodes, numDownNodes))
-            nodesMsg.show()
+            #nodesMsg.show()
             jobsMsg = LogEntry(self.logFile, "Found %d queued jobs out of %d jobs total" % (numQueuedJobs, numJobs))
-            jobsMsg.show()
+            #jobsMsg.show()
             waitMsg = LogEntry(self.logFile, "Longest wait has been %d seconds for %d nodes of %d cpus each" \
                                % (longestWait, longWaitNodes, longWaitPpn))
-            waitMsg.show()
+            #waitMsg.show()
+
+            self.longestQueuedStrategy(longWaitNodes, longWaitPpn, longWaitProps)
+
+            #Decide if there is demand or there isn't.
+            if numIdleNodes > 0:    #If there is at least one idle node, demand is for specific node properties
+                pass
+
+
+            ## If there are more idle nodes than we need, and they dont have the properties being
+            #requested by queued jobs, might as well get rid.
+            #if numIdleNodes >
+
 
 
 
@@ -227,15 +241,33 @@ class DCSE(object):
             ## Terminate the connection to the pbs_server rather than waiting for a timeout -
             # otherwise the server eventually hits its resource limit.
             self.Cluster.interface.disconnect()
-        except Exception as e:
-            print e
+        #except Exception as e:
+        #    print e
 
 
-        def longestQueued(self, nodes, ppn, properties=[]):
-            '''
-            Function to power on the nodes needed to satisfy the longestqueued strategy
-            '''
-            self.Cluster.interface.getMinNodes(num_nodes, ppn, props=[])
+    def longestQueuedStrategy(self, nodes, ppn, properties=[]):
+        '''
+        Function to power on the nodes needed to satisfy the longestqueued strategy
+        '''
+        self.Cluster.interface.getMinNodes(nodes, ppn, props=[])
+        #print "DEBUG: Nodes available that meet the criteria:"
+        #for node in self.Cluster.interface.suitableNodes:
+           # print node.hostname
+
+        #print "DEBUG: Nodes selected to fulfill this request:"
+        for node in self.Cluster.interface.recommendedNodes:
+            #print node.hostname
+            #New worker node object creates a WorkerNode interface
+            try:
+                Worker = WorkerNode(self.cfgPath,node.hostname,node.nodeType)
+                Worker.interface.printConfig()
+            ##Log and output the error if we weren't able to start a node, but
+            #stay looping through the other nodes - The node shortage will be
+            #remedied on the next iteration of the Engine.
+            #
+            except Exception as node_contact_error:
+                msg = LogEntry(self.logFile, "An error occurred communicating with node %s: %s" % (node.hostname,node_contact_error))
+                msg.show()
 
 
 

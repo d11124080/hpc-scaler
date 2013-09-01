@@ -14,7 +14,7 @@ class HardwareNode(object):
     "pass") MUST be processed after and overridding methods within the child driver.
     '''
 
-    def __init__(self, configFile):
+    def __init__(self):
         '''
         HardwareNode instance is initialised with identifier and the type of power interface
         which are obtained from the configuration file we are passed on instance creation

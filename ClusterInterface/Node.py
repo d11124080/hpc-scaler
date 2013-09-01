@@ -27,6 +27,7 @@ class Node(object):
         self.queues = []    #We'll store a list of queue objects representing the queue a node is in.
         self.properties = [] #Likewise a list of properties of this node.
         self.jobs = []      #Array of Jobs (of type Job) currently running on this node, if any.
+        self.nodeType = "hardware" #hardware or cloud - a node is hardware unless it is specifically designated a cloud node
 
     def setNumCpus (self,num):
         self.num_cpus = num

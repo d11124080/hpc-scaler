@@ -130,6 +130,7 @@ class TorqueDriver(ClusterDriver):
         for node in nodelist:
             thisnode = Node()
             thisnode.setHostname(node.name)
+            thisnode.nodeType = 'hardware'      #Node type is "hardware" unless it proves itself a cloud node!
             for attrib in node.attribs:
                 if attrib.name == 'state':
                     thisnode.setState(attrib.value)
@@ -144,6 +145,8 @@ class TorqueDriver(ClusterDriver):
                     propertyList = attrib.value.split(',')
                     for propertyName in propertyList:
                         thisnode.addProperty(propertyName)
+                        if propertyName == 'cloud':         #Node has the "cloud" property
+                            thisnode.nodeType = 'cloud'     #Convert nodetype to cloud
                         #print "added property",propertyName
                 elif attrib.name == 'status':
                     #Torque 'status' contains a value which is in turn a string of attributes
@@ -151,7 +154,9 @@ class TorqueDriver(ClusterDriver):
                     variables = attrib.value.split(',')
                     pairs = [variable.split('=',1) for variable in variables]
                     for data in pairs:
-                        if data[0] == 'jobs':
+                        if data[0] == 'physmem':
+                            thisnode.setMem(data[1])
+                        elif data[0] == 'jobs':
                             if not data[1]:     ##if our list is empty, this node has no jobs running on it.
                                 self.idlenodes.append(thisnode) ##Add to idle nodes list
                                 thisnode.setNumJobs(0)          ##Set number of running jobs to zero
@@ -164,24 +169,30 @@ class TorqueDriver(ClusterDriver):
                                 if thisnode.num_jobs == thisnode.num_cpus:  ##If num_jobs = num_cpus, this node is completely full
                                     thisnode.setFreeCpus(0)
                                     self.fullnodes.append(thisnode)         ##Add to list of full nodes
-                        elif data[0] == 'physmem':
-                            thisnode.setMem(data[1])
-                            #print "mem is ",thisnode.mem
-                        #else: print "data is ",data
+
+                        #else: print "data is ",data[0]
                 #else:
                     #print "attrib is",attrib.name,"and value is",attrib.value
             #thisnode.printDetails()
             self.nodes.append(thisnode)
             if thisnode.state == 'down':
                 self.downnodes.append(thisnode)
+            if thisnode.nodeType == 'cloud':
+                self.cloudnodes.append(thisnode)
+                if thisnode.state == 'idle':
+                    self.idlecloudnodes.append(thisnode)
+            elif thisnode.nodeType == 'hardware':
+                if thisnode.state == 'idle':
+                    self.idlehardwarenodes.append(thisnode)
         self.total_nodes = len(self.nodes)
         self.idle_nodes = len(self.idlenodes)
         self.down_nodes = len(self.downnodes)
+        self.idle_cloud_nodes = len(self.idlecloudnodes)
         #print "number of nodes is ", self.total_nodes
         #print "number of down nodes is",self.down_nodes
         #print "number of idle nodes is ", self.idle_nodes
         #print "number of free cpus is ", sum(sequence)
-        print "got nodes"
+
 
     def getJobs(self):
         self.numCpusInUse = 0
@@ -203,7 +214,7 @@ class TorqueDriver(ClusterDriver):
                                 #nodes,ppnstring = attrib.value.split(":")
 
                                 nodeDataList = attrib.value.split(":")
-                                job.numNodes = nodeDataList[0]
+                                job.numNodes = int(nodeDataList[0])
                                 iterNum = 0     ##Needed to iterate through our properies and skip the first one.
                                 for item in nodeDataList:
                                     if "=" in item:         #An equals suggests a nodes= or ppn= assignment
@@ -214,6 +225,8 @@ class TorqueDriver(ClusterDriver):
                                     else:       #No equals sign means this is a property
                                         if iterNum > 0: ##unless its the num_nodes int we stripped off earlier!
                                             job.properties.append(item)
+                                            #If node has a "cloud" property, its cloud, else hardware
+
                                     iterNum += 1
                             else:   #ppn not specified so is taken to be one
                                 job.numNodes = int(attrib.value)
@@ -244,11 +257,10 @@ class TorqueDriver(ClusterDriver):
             self.jobs.append(job)
         self.numJobs = len(self.jobs)
         self.numQueuedJobs = len(self.queuedJobs)
-        print "got jobs"
 
 
 ##Un-comment for unit testing.
-#'''
+'''
 print "***********************************"
 print "UNIT TESTS FOR TORQUEDRIVER MODULE"
 print "***********************************"
@@ -269,4 +281,4 @@ TD.getJobs()
 #TD.printJobs()
 #TD.numDownNodes
 TD.printJobs()
-#'''
+'''

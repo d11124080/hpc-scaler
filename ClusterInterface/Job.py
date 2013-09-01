@@ -33,7 +33,7 @@ class Job(object):
 
     def getQueueTime(self):
         '''Determine the time (in seconds) job has been in the queue'''
-        self.tiq = time.time() - self.qtime
+        self.tiq = int(time.time() - self.qtime)
 
     def printDetails(self):
         self.getQueueTime() ##First update the time-in-queue
@@ -42,8 +42,8 @@ class Job(object):
         print "Showing Details for Job %s" % self.jobId
         print "-------------------------------------------"
         print "Job Status: \t %s" % self.status
-        print "Req'd Nodes: \t %s" % self.numNodes
-        print "CPUs Per Node: \t %s" % self.ppn
+        print "Req'd Nodes: \t %d" % self.numNodes
+        print "CPUs Per Node: \t %d" % self.ppn
         print "Walltime : \t %s" % self.walltime
         if self.properties:
             print "Properties:"
@@ -53,7 +53,7 @@ class Job(object):
             print "Nodes:"
             for node in self.nodes:
                 print node+" "
-        print "Total CPUs: \t %s" % self.ncpus
+        print "Total CPUs: \t %d" % self.ncpus
         print "Queued since: \t %d" % self.qtime
         print "Time in Q: \t %d seconds." % self.tiq
         print "*******************************************"

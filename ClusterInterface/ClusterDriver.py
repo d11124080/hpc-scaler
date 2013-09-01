@@ -30,6 +30,10 @@ class ClusterDriver(object):
         self.idlenodes = []     #An array of nodes that are idle (i.e no jobs currently running)
         self.downnodes = []     #An array of nodes that are down (i.e powered off)
         self.fullnodes = []     #An array of nodes that are at maximum cpu core usage
+        self.cloudnodes = []    #An array of nodes with the "cloud" property
+        self.idlecloudnodes = [] #An array of idle nodes with the cloud property
+        self.hardwarenodes = [] #An array of nodes without the 'cloud' property
+        self.suitableNodes = [] #Array of nodes which would be suitable for a given job
         self.jobs = []          #An array of jobs of all status
         self.queuedJobs = []    #An array of all jobs currently in the queue
         self.connectionStatus = 'Not Connected' #Initialise connection status (Connected | Not Connected)
@@ -109,7 +113,7 @@ class ClusterDriver(object):
 
     def getLongestWait(self):
         '''Find the Job which has been queued the longest - used for longestqueued strategy'''
-        print "getting longest wait"
+        #print "DEBUG: getting longest wait"
         longest_wait_time = 0
         if self.jobs:
             for job in self.jobs:
@@ -122,6 +126,12 @@ class ClusterDriver(object):
                     self.longest_wait_ncpus = job.ncpus
                     self.longest_wait_props = job.properties
                     self.longest_wait_time = longest_wait_time
+                    if not isinstance(self.longest_wait_time, int):
+                        raise Exception("longest wait time not an int: %s" % self.longest_wait_time)
+                    if not isinstance(self.longest_wait_nodes, int):
+                        raise Exception("longest wait nodes not an int: %s" % self.longest_wait_nodes)
+                    if not isinstance(self.longest_wait_ppn, int):
+                        raise Exception("longest wait ppn not an int: %s" % self.longest_wait_ppn)
 
     def getMinNodes(self, num_nodes, ppn, props=[]):
         '''
@@ -129,7 +139,8 @@ class ClusterDriver(object):
         of nodes, cpus per node, and a specific set of properties. Should return a list
         of hostnames
         '''
-        suitableNodes = []                  #Array to hold suitable nodes
+        self.suitableNodes = []                  #Array to hold suitable nodes
+        self.recommendedNodes = []              #Array to hold the nodes we will recommend
         for node in self.nodes:
             #Set an initial flag to determine if the node being examined right now is suitable
             thisnode = True;                 #Useful until it proves otherwise!
@@ -142,7 +153,15 @@ class ClusterDriver(object):
                             thisnode = False    #This node doesn't have at least one of the properties we wanted.
                     #All properties have been checked, check our flag
                     if thisnode == True:
-                        suitableNodes.append(node.hostname)
+                        self.suitableNodes.append(node)
+
+        ##Now establish the set of resources to recommend provisioning
+        #nodecount = 0
+        for node in self.suitableNodes:
+            while len(self.recommendedNodes) < num_nodes:   #No need to return more nodes than the job is requesting!
+                self.recommendedNodes.append(node)
+                print "selected ",node.hostname
+                print len(self.recommendedNodes)
 
 
 
