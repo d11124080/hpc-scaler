@@ -64,7 +64,7 @@ class IpmiDriver(HardwareNode):
             print "Error(s) occurred when parsing the Ipmi section of the config file:"
             print configError
 
-    def printConfig(self):
+    def printDetails(self):
         print "Interface: %s" % self.iface
         print "Username: %s" % self.username
         print "Password: %s" % self.password
@@ -74,14 +74,19 @@ class IpmiDriver(HardwareNode):
 
     #ipmitool -I lanplus -U <username> -P <password> -H <ipaddress> chassis power <command>
     def powerOn(self):
-        onCmd = [self.exe,"-U",self.username,"-P",self.password,"-H",self.ipmiAddr,"chassis","power","on"]
-        try:
+        #First check the status - if the node is already booting, leave it be!
+        self.getStatus()
+        if self.status == "on":
+            print "Machine %s is already powered on" % self.host
+        else:   #machine is off or indeterminate
+            onCmd = [self.exe,"-U",self.username,"-P",self.password,"-H",self.ipmiAddr,"chassis","power","on"]
+            #try:
             power_on = subprocess.Popen(onCmd)
             power_on.wait()
             if power_on.returncode:    ##Non-zero return code implies an error with our power on command
                 raise Exception("An error occurred powering on "+self.ipmiAddr)
-        except Exception as err:
-            print err
+            #except Exception as err:    ##Dont catch generic exceptions at the driver level.
+            #print err
 
     def powerOff(self):
         offCmd = [self.exe,"-U",self.username,"-P",self.password,"-H",self.ipmiAddr,"chassis","power","off"]
@@ -91,10 +96,10 @@ class IpmiDriver(HardwareNode):
             if power_off.returncode:    ##Non-zero return code implies an error with our power on command
                 raise Exception("An error occurred powering off "+self.host)
         except Exception as err:
-            print err
+            raise Exception(err)
 
     def powerCycle(self):
-        cycleCmd = [self.exe,"-U",self.username,"-P",self.password,"-H",self.host,"chassis","power","on"]
+        cycleCmd = [self.exe,"-U",self.username,"-P",self.password,"-H",self.host,"chassis","power","reset"]
         try:
             power_cycle = subprocess.Popen(cycleCmd)
             power_cycle.wait()
@@ -110,6 +115,14 @@ class IpmiDriver(HardwareNode):
             power_status.wait()
             if power_status.returncode:    ##Non-zero return code implies an error with our power on command
                 raise Exception("An error occurred checking power on "+self.host)
+            #Read our status
+            if "is on" in power_status.stdout:
+                self.status = 'on'
+            elif "is off" in power_status.stdout:
+                self.status = 'off'
+            else:
+                self.status = 'unknown'
+
         except Exception as err:
             print err
 
@@ -117,6 +130,6 @@ class IpmiDriver(HardwareNode):
 #'''
 #IN = IpmiDriver("../../../hpc-scaler.cfg", "alienware")
 #IN.getConfig()
-#IN.printConfig()
+#IN.printDetails()
 #IN.getStatus()
 #'''

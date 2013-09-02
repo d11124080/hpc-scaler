@@ -11,6 +11,7 @@ try:
     import ConfigParser
     import boto.ec2
     import socket
+    import time
 except (NameError, ImportError) as e:
     print "Component(s) not found or not readable at default location:"
     print e
@@ -30,7 +31,6 @@ class Ec2Driver(CloudNode):
         '''
         #take in hostname
         self.hostname = hostname
-        self.ipAddr = socket.gethostbyname(hostname)
         # First, read the configuration file. We are only interested in the "Ec2" section
         # (The NodeController package can be a component of an application with a shared config file)
         config = ConfigParser.RawConfigParser()
@@ -43,17 +43,15 @@ class Ec2Driver(CloudNode):
         self.aws_ssh_key = config.get(config_section, "aws_ssh_key")
         self.aws_ami = config.get(config_section, "aws_ami")
         self.aws_type = config.get(config_section, "aws_type")
-        self.aws_suffix = config.get(config_section, "aws_suffix")
+        #Aws security groups needs to be an array, even a single element one.
+        self.aws_security_groups = []
+        self.aws_security_groups.append(config.get(config_section, "aws_security_group"))
+        self.aws_api_delay = int(config.get(config_section, "aws_api_delay"))
+        #Maximum number of cloud nodes we can activate at any given time
+        self.maxCloudNodes = int(config.get(config_section, "max_cloud_nodes"))
 
-        # Get the Public IP associated with this hostname
-        try:
-            self.ec2Addr = socket.gethostbyname(self.hostname+"."+self.aws_suffix)
-        except socket.error as error:
-            #re-raise our exception to the calling class
-            raise Exception("Error resolving %s.%s - %s" % (self.hostname,self.aws_suffix,error))
-        if not self.ec2Addr:       # Should be caught by socket.error, but in case another error occurred
-            raise Exception("Unexpected error in EC2 driver when assigning address.")
-
+        #Resolve IP of our hostname
+        self.resolveIP()            #From parent class
 
         ##Now need to build our boto config on the fly - this saves the user having to generate a
         #boto configuration file. See https://code.google.com/p/boto/wiki/BotoConfig for further info.
@@ -65,6 +63,15 @@ class Ec2Driver(CloudNode):
             boto.config.add_section('Credentials')
             boto.config.set('Credentials', 'aws_access_key_id', self.access_key_id)
             boto.config.set('Credentials', 'aws_secret_access_key', self.secret_access_key)
+
+
+        ##Once all is configured, connect to EC2, and obtain our running instances.
+        self.connect()
+        #Obtain an initial list of running instances, keypairs, and addresses
+        self.getRunningInstances()
+        self.getKeypairs()
+        self.getAddresses()
+
 
     def printDetails(self):
         '''Print Driver object data for debugging'''
@@ -78,14 +85,14 @@ class Ec2Driver(CloudNode):
         if self.runningInstances:
             print "Instances:"
             for i in self.runningInstances:
-                print i
+                print i.id,"(",i.state,",",i.ip_address,")"
 
     def connect(self):
         #Initiate a connection to the amazon region specified in our config file.
         #No need to disconnect, as these API connections are over HTTPS
         try:
             self.conn = boto.ec2.connect_to_region(self.aws_region)
-            print "Connected: ",self.conn
+            #print "DEBUG: Connected: ",self.conn
         except Exception as e:
             print "Error occurred connecting to Amazon Web Services:"
             raise Exception(e)  ##Re-raise exception
@@ -94,18 +101,42 @@ class Ec2Driver(CloudNode):
         self.conn = None    #Not really required, but why not...
 
     def getRunningInstances(self):
-        self.runningInstances = self.conn.get_all_instances()
-        self.numRunningInstances = len(self.runningInstances)
+        self.runningInstances = [] #new empty list of running instances
+        # First obtain a list of all instances/reservations, including stopped, terminated, etc
+        self.allInstances = self.conn.get_all_instances()
+        # Now check the state of each instance, and only track the running ones.
+        for reservation in self.allInstances:
+            for instance in reservation.instances:
+                #print dir(instance)
+                #print instance.state
+                if instance.state == 'terminated' or instance.state == 'shutting-down'\
+                or instance.state == 'stopping' or instance.state == 'stopped':
+                    pass    ##Do nothing - this is not an active instance
+                elif instance.state == 'pending' or instance.state == 'running':
+                    self.runningInstances.append(instance)
+                self.numRunningInstances = len(self.runningInstances)
 
     def getKeypairs(self):
-        keypairs = self.conn.get_all_key_pairs()
-        for i in keypairs:
-            print i
+        self.keypairs = self.conn.get_all_key_pairs()
+
 
     def getAddresses(self):
-        self.addresses = self.conn.get_all_addresses()
-        #for i in self.addresses:
-        #   print i
+        '''
+        Fetch the available Elastic IP addresses from our EC2 Pool. Reject any IP
+        addresses which are already bound to an instance.
+        '''
+        self.addresses = [] ##new empty array
+        ##get_all_addresses returns a list of boto Address objects
+        # we are interested in the "public_ip" and "instance_id" values
+        # within these objects
+        self.address_objects = self.conn.get_all_addresses()
+        for address_obj in self.address_objects:
+            if not address_obj.instance_id:     #Only accept IP addresses not already assigned
+                self.addresses.append(address_obj.public_ip)
+            else:
+                #print "DEBUG: ip address %s already in use by instance %s" % (address_obj.public_ip,address_obj.instance_id)
+                pass
+
 
     def getAllImages(self):
         '''Return a list of all available images'''
@@ -114,40 +145,86 @@ class Ec2Driver(CloudNode):
 
     def powerOn(self):
         '''Start an Ec2 instance based on the machine type specified in the configuration file'''
-        ##First find an unused public IP address from our pool
-        self.getAddresses()
-        self.getRunningInstances()
-        for inst in self.runningInstances:
-            print inst
-            pass
 
-        reservation = self.conn.run_instances(image_id=self.aws_ami, key_name=self.aws_ssh_key, instance_type=self.aws_type)
-        for r in self.conn.get_all_instances():
-            if r.id == reservation.id:
-                break
-            print r.instances[0].public_dns_name
-            self.instanceId = reservation.id
-        pass
-
-    def stopInstance(self):
         try:
-            stoppedInstances = self.conn.stop_instances(self.instanceId)
+            # Some checks before powering on the instance.
+            self.getRunningInstances() #update the list of running instances
+            if self.numRunningInstances >= self.maxCloudNodes:
+                raise Exception("Error: You have reached the maximum number (%d) of cloud instances specified in the config file" % self.maxCloudNodes)
+            ##First match the hostname we were given with a public IP address from our EC2 pool
+            self.getAddresses()
+            if self.ipAddr not in self.addresses:
+                raise Exception("Error: The selected host IP address "+self.ipAddr+" is not available in the EC2 Pool")
+
+
+            #self.getRunningInstances()
+            #print dir(self.runningInstances)
+            #for inst in self.runningInstances:
+            #   #print "DEBUG:inst is %s and state is %s and ip is %s" % (inst.id, inst.state, inst.ip_address)
+            #   pass
+
+
+            reservation = self.conn.run_instances(image_id=self.aws_ami, key_name=self.aws_ssh_key, \
+                                                  instance_type=self.aws_type, security_groups=self.aws_security_groups)
+            time.sleep(self.aws_api_delay)  #give the aws backend time to deliver
+            #Check the live instances for our current instance.
+            for r in self.conn.get_all_instances():
+                if r.id == reservation.id:          ##If there's a match, our reservation is live
+                    break
+            for inst in reservation.instances:
+                self.instanceId = inst.id           #Obtain the EC2 instance ID
+
+            ##Next we need to assign the unised IP address we selected earlier to this instance.
+            #print "DEBUG: Requesting address %s for instance %s" % (self.ipAddr, reservation.id)
+            assignment = self.conn.associate_address(public_ip=self.ipAddr,instance_id=self.instanceId)
+            #print "DEBUG: ", dir(assignment)
+            time.sleep(self.aws_api_delay)
+
+
+        except TypeError as syntax_err:
+            print "Error Powering On"
+            raise Exception(syntax_err) ##Re-raise to calling class.
+        #except Exception as e:
+        #    print "An error occurred powering on the node %s:" % self.hostname
+        #   print e
+
+
+    def powerOff(self):
+        try:
+            self.getInstance()
+            stoppedInstances = self.conn.terminate_instances(self.instanceId)
             if not stoppedInstances:
                 raise Exception("Unable to stop instance %s - Manual Intervention is Required" % self.instanceId)
+            else:
+                print "Stopped instance %s (%s)" % (self.hostname, self.instanceId)
         except Exception as err:
             print err
 
+    def powerCycle(self):
+        pass    #reserved for future implementation
 
-
+    def getInstance(self):
+        '''Returns EC2 instance ID of the current instance based on self.hostname'''
+        if not self.ipAddr:
+            raise Exception("Current IP address of hostname %s has not been resolved." % self.hostname)
+        else:   #we have an IP address, so obtain the instance ID
+            address_objects = self.conn.get_all_addresses()
+            for address_obj in address_objects:
+                if address_obj.public_ip == self.ipAddr:
+                    self.instanceId = address_obj.instance_id
+            if not self.instanceId:
+                raise Exception("Error obtaining instance IP - there may be no cloud instance for hostname %s" % self.hostname)
 
 
 #Un-comment for unit testing
 #'''
-ED = Ec2Driver("../../../hpc-scaler.cfg", None)
+#ED = Ec2Driver("../../../hpc-scaler.cfg", "cloudnode1")
 
-ED.connect()
-ED.getRunningInstances()
-ED.printDetails()
-ED.getKeypairs()
-#ED.startInstance()
+#ED.connect()
+#ED.getRunningInstances()
+#ED.printDetails()
+#ED.getKeypairs()
+#ED.powerOff()
+#ED.getRunningInstances()
+#ED.printDetails()
 #'''

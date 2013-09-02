@@ -28,6 +28,9 @@ class HardwareNode(object):
 
     def powerCycle(self):
         pass
+    
+    def printDetails(self):
+        pass    #useful for debugging
 
 
 

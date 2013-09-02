@@ -24,7 +24,7 @@ except (NameError, ImportError) as e:
 # This should only happen once per installation.
 #
 try:
-    from pbs_python.fourthreefive import pbs, PBSQuery, PBSAdvancedParser
+    from pbs_python.fourthreefive import pbs
 except (NameError, ImportError) as pbs_import_err:
     print "pbs_python module not built. Attempting to build..."
     try:
@@ -34,7 +34,7 @@ except (NameError, ImportError) as pbs_import_err:
         print "An error occurred building the pbs_python module. Please attempt a manual build."
         sys.exit(0) ##Quit the program - we won't be able to speak to the Resource Manager.
     try:    ##We have built the binary - try import the module
-        from pbs_python.fourthreefive import pbs, PBSQuery, PBSAdvancedParser
+        from pbs_python.fourthreefive import pbs
     except (NameError, ImportError) as pbs_import_err:  #still unable to import, give up.
         print "An irrecoverable error occurred importing the pbs_python module. Quitting."
         sys.exit(0) ##Quit the program - we won't be able to speak to the Resource Manager.
@@ -131,6 +131,11 @@ class TorqueDriver(ClusterDriver):
             thisnode = Node()
             thisnode.setHostname(node.name)
             thisnode.nodeType = 'hardware'      #Node type is "hardware" unless it proves itself a cloud node!
+            ##Bit of a hack, but set num jobs to zero initially - jobs data will not be given
+            # where there are no jobs running on a node, so overwrite this if that happens
+            thisnode.setNumJobs(0)          ##Set number of running jobs to zero
+            thisnode.setFreeCpus(thisnode.num_cpus) #Set free cpus to the total number of cpus on the node
+
             for attrib in node.attribs:
                 if attrib.name == 'state':
                     thisnode.setState(attrib.value)
@@ -154,14 +159,11 @@ class TorqueDriver(ClusterDriver):
                     variables = attrib.value.split(',')
                     pairs = [variable.split('=',1) for variable in variables]
                     for data in pairs:
+
                         if data[0] == 'physmem':
                             thisnode.setMem(data[1])
                         elif data[0] == 'jobs':
-                            if not data[1]:     ##if our list is empty, this node has no jobs running on it.
-                                self.idlenodes.append(thisnode) ##Add to idle nodes list
-                                thisnode.setNumJobs(0)          ##Set number of running jobs to zero
-                                thisnode.setFreeCpus(thisnode.num_cpus) #Set free cpus to the total number of cpus on the node
-                            else:               ##Node is running jobs
+                            if data[1]:     ##if our list is not empty, this node jobs running on it.
                                 for jobid in data[1]:
                                     jobinstance = Job(jobid)
                                     thisnode.addJob(jobinstance)
@@ -175,8 +177,12 @@ class TorqueDriver(ClusterDriver):
                     #print "attrib is",attrib.name,"and value is",attrib.value
             #thisnode.printDetails()
             self.nodes.append(thisnode)
+            if thisnode.num_jobs == 0 and thisnode.state != 'down':
+                thisnode.setState('idle')
             if thisnode.state == 'down':
                 self.downnodes.append(thisnode)
+            elif thisnode.state == 'idle':
+                self.idlenodes.append(thisnode)
             if thisnode.nodeType == 'cloud':
                 self.cloudnodes.append(thisnode)
                 if thisnode.state == 'idle':
@@ -187,7 +193,8 @@ class TorqueDriver(ClusterDriver):
         self.total_nodes = len(self.nodes)
         self.idle_nodes = len(self.idlenodes)
         self.down_nodes = len(self.downnodes)
-        self.idle_cloud_nodes = len(self.idlecloudnodes)
+        self.numIdleCloudNodes = len(self.idlecloudnodes)
+        self.numIdleHardwareNodes = len(self.idlehardwarenodes)
         #print "number of nodes is ", self.total_nodes
         #print "number of down nodes is",self.down_nodes
         #print "number of idle nodes is ", self.idle_nodes

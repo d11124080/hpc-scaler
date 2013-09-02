@@ -103,6 +103,7 @@ class DCSE(object):
             ##Worker nodes may be hardware based, cloud based, or some mix of the two.
             # Accept boolean values for each type of node, and see which type we prefer,
             # 'Hardware' or 'Cloud'
+            #
             self.hasHardware = config.get(config_section, "has_hardware")
             if not self.hasHardware in ("True","False"):
                 raise ConfigErrorException("'has_hardware' must be 'True' or 'False'. Currently '%s'" % self.hasHardware)
@@ -119,23 +120,23 @@ class DCSE(object):
             ##Obtain the chosen strategy for cluster scaling:
             # longestqueued = Satisfy job which has been queued the longest
             # bestfit = Satisfy job which will use the most resources from our action
+            #
             self.strategy = config.get(config_section, "strategy")
             if not self.strategy in ("longestqueued","bestfit"):
                 raise ConfigErrorException("strategy must be 'longestqueued' or 'bestfit'. Currently '%s'" % self.strategy)
 
             #Get the number of spare physical and/or cloud nodes to keep booted
-            self.spareHardware = config.get(config_section, "spare_hardware")
-            if not isInt(self.spareHardware):
-                raise ConfigErrorException("'spare_hardware' should be an integer value. Currently '%s'" % self.spareHardware)
+            if self.hasHardware == 'True':
+                self.spareHardware = int(config.get(config_section, "spare_hardware"))
+                if not isInt(self.spareHardware):
+                    raise ConfigErrorException("'spare_hardware' should be an integer value. Currently '%s'" % self.spareHardware)
 
-            self.spareCloud = config.get(config_section, "spare_cloud")
-            if not isInt(self.spareCloud):
-                raise ConfigErrorException("'spare_cloud' should be an integer value. Currently '%s'" % self.spareCloud)
+            if self.hasCloud == 'True':
+                self.spareCloud = config.get(config_section, "spare_cloud")
+                if not isInt(self.spareCloud):
+                    raise ConfigErrorException("'spare_cloud' should be an integer value. Currently '%s'" % self.spareCloud)
 
-            #Maximum number of cloud nodes we can activate at any given time
-            self.maxCloudNodes = config.get(config_section, "max_cloud_nodes")
-            if not isInt(self.maxCloudNodes):
-                raise ConfigErrorException("'max_cloud_nodes' should be an integer value. Currently '%s'" % self.maxCloudNodes)
+
 
             self.checkInterval = config.get(config_section, "check_interval")
             if not isInt(self.checkInterval):
@@ -206,6 +207,9 @@ class DCSE(object):
             #Now break down nodes into full, idle, and down.
             numFullNodes = len(self.Cluster.interface.fullnodes)
             numIdleNodes = len(self.Cluster.interface.idlenodes)
+            numCloudNodes = len(self.Cluster.interface.cloudnodes)
+            numIdleCloudNodes = len(self.Cluster.interface.idlecloudnodes)
+            numIdleHardwareNodes = len(self.Cluster.interface.idlehardwarenodes)
             numDownNodes = len(self.Cluster.interface.downnodes)
             #Break down jobs into queued and running
             numJobs = len(self.Cluster.interface.jobs)
@@ -216,6 +220,9 @@ class DCSE(object):
             longWaitNodes = self.Cluster.interface.longest_wait_nodes   #Nodes requested
             longWaitPpn = self.Cluster.interface.longest_wait_ppn       #CPUs per node requested
             longWaitProps = self.Cluster.interface.longest_wait_props   #Node properties requested
+            #Get data about total resource requests in the queue
+            #self.Cluster.interface.getQueueData()
+
 
             #Print some summary information on each iteration
             nodesMsg = LogEntry(self.logFile, "Found %d idle nodes and %d down nodes" % (numIdleNodes, numDownNodes))
@@ -224,28 +231,82 @@ class DCSE(object):
             jobsMsg.show()
 
 
-            ## Now execute our chosen strategy
-            if self.strategy == 'longestqueued':
-                waitMsg = LogEntry(self.logFile, "Longest wait has been %d seconds for %d nodes of %d cpus each" \
-                               % (longestWait, longWaitNodes, longWaitPpn))
-                #waitMsg.show()
-                waitMsg.write()
-                self.longestQueuedStrategy(longWaitNodes, longWaitPpn, longWaitProps)
-            elif self.strategy == 'bestfit':
-                pass
-
-            #Decide if there is demand or there isn't.
-            if numIdleNodes > 0:    #If there is at least one idle node, demand is for specific node properties
-                pass
 
 
-            ## If there are more idle nodes than we need, and they dont have the properties being
-            #requested by queued jobs, might as well get rid.
-            #if numIdleNodes >
+            #Decide if there is demand or there isn't. First indicator would be jobs in the queue!
+            if numQueuedJobs > 0:   #There are jobs in the queue
+                #We're in demand!
+                if numIdleNodes > 0:
+                    ##If there is at least one idle node, any demand must be for specific node properties
+                    # or be due to a user or group exceeding their allocation. Cannot be considered to be
+                    # in Demand
+                    #
+                    inDemand = False
+                    #print "DEBUG: Cluster not in Demand."
+                    #Still attempt to free the job which has been queued the longest
+                    msg = LogEntry(self.logFile, "No demand for backfill strategy (idle nodes present) - falling back to longestqueued strategy")
+                    msg.show()
+                    msg.write()
+                    self.longestQueuedStrategy(longWaitNodes, longWaitPpn, longWaitProps)
+                else: # Queued jobs + No idle nodes = Demand!
+                    print "DEBUG: Cluster in Demand."
+                    inDemand = True
+            else:   #No jobs in the queue can only mean we're not in demand
+                inDemand = False
+                print "DEBUG: Cluster Not in Demand."
 
 
+            if inDemand == True:
+                ## Now execute our chosen strategy for cluster expansion
+                if self.strategy == 'longestqueued':
+                    waitMsg = LogEntry(self.logFile, "Longest wait has been %d seconds for %d nodes of %d cpus each" \
+                                       % (longestWait, longWaitNodes, longWaitPpn))
+                    #waitMsg.show()
+                    waitMsg.write()
+                    self.longestQueuedStrategy(longWaitNodes, longWaitPpn, longWaitProps)
+                elif self.strategy == 'bestfit':
+                    self.bestFitStrategy()
+                    pass
+            elif inDemand == False:
+                ## Cluster is not in demand, so initiate a shutdown of idle nodes
+                if self.hasHardware == 'True':
+                    if numIdleHardwareNodes > self.spareHardware:    #Our config file allows for a specified number of "spare" idle nodes
 
-
+                        poweredoffcount = 0                                                     #Count nodes we power off.
+                        idlehardwarenodes = self.Cluster.interface.idlehardwarenodes                  #Take a copy before iteration and modification
+                        for node in idlehardwarenodes:                                             #Iterate through local copy
+                            if len(self.Cluster.interface.idlehardwarenodes) > self.spareHardware:    #we have more idle cloud nodes than we'd like
+                                try:
+                                    Worker = WorkerNode(self.cfgPath,node.hostname,node.nodeType)   #Workernode is a generic type providing an interface to the driver
+                                    Worker.interface.powerOff()                                     # This is where the magic happens...
+                                    self.Cluster.interface.idlehardwarenodes.remove(node)              #Pop it off the list of idle nodes
+                                    poweredoffcount += 1
+                                    msg = LogEntry(self.logFile, "Powered off idle hardware node %s" % node.hostname)
+                                    msg.show()
+                                    msg.write()
+                                except Exception as e:
+                                    msg = LogEntry(self.logFile, e)
+                                    msg.show()
+                                    msg.write()
+                                                                              #and increment our powered off counter.
+                if self.hasCloud == 'True':
+                    if numIdleCloudNodes > self.spareCloud:    #Our config file allows for a specified number of "spare" idle nodes
+                        poweredoffcount = 0                                                     #Count nodes we power off.
+                        idlecloudnodes = self.Cluster.interface.idlecloudnodes                  #Take a copy before iteration and modification
+                        for node in idlecloudnodes:                                             #Iterate through local copy
+                            if len(self.Cluster.interface.idlecloudnodes) > self.spareCloud:    #we have more idle cloud nodes than we'd like
+                                try:
+                                    Worker = WorkerNode(self.cfgPath,node.hostname,node.nodeType)   #Workernode is a generic type providing an interface to the driver
+                                    Worker.interface.powerOff()                                     # This is where the magic happens...
+                                    self.Cluster.interface.idlecloudnodes.remove(node)              #Pop it off the list of idle nodes
+                                    poweredoffcount += 1                                            #and increment our powered off counter.
+                                    msg = LogEntry(self.logFile, "Powered off idle cloud node %s" % node.hostname)
+                                    msg.show()
+                                    msg.write()
+                                except Exception as e:
+                                    msg = LogEntry(self.logFile, e)
+                                    msg.show()
+                                    msg.write()
 
             ## Terminate the connection to the pbs_server rather than waiting for a timeout -
             # otherwise the server eventually hits its resource limit.
@@ -258,10 +319,26 @@ class DCSE(object):
         '''
         Function to power on the nodes needed to satisfy the longestqueued strategy
         '''
+        stratMsg = LogEntry(self.logFile, "Using 'longestqueued' strategy to provision resources")
+        stratMsg.show()
+        stratMsg.write()
+
+        ##Use the ClusterDriver getMinNodes method to populate the suitableNodes
+        # and recommendedNodes lists, which contain a list of all eligible nodes
+        # to run this job, and a subset of this list containing only enough
+        # resources to run this specific job respectively.
+        #
         self.Cluster.interface.getMinNodes(nodes, ppn, properties)
-        print "DEBUG: Nodes available that meet the criteria:"
-        for node in self.Cluster.interface.suitableNodes:
-            print node.printDetails()
+        ## Some debugging information
+        #print "DEBUG: Nodes available that meet the criteria:"
+        #print "Nodes: %d\t PPN: %d\nProperties:" % (nodes,ppn)
+        #for p in properties:
+        #   print p
+        suitMsg = LogEntry(self.logFile, "Found %d suitable nodes" % len(self.Cluster.interface.suitableNodes))
+        suitMsg.show()
+        suitMsg.write()
+        #for node in self.Cluster.interface.suitableNodes:
+        #    print node.printDetails()
 
         ##Copy our recommendedNodes array. We can use this to add additional nodes to
         # the list we've already tried (in case substitutons are needed) to save modifying
@@ -277,26 +354,37 @@ class DCSE(object):
             # contactable due to failure, maintenance, etc.
             #
             successFlag = False
-            while (successFlag == False):
+            while successFlag == False:
                 try:
                     Worker = WorkerNode(self.cfgPath,node.hostname,node.nodeType)
-                    #print "--------------\nDEBUG\n-------------\n",Worker.interface.printConfig(),"\n----------------"
+                    #print "DEBUG: Worker is", dir(Worker)
+                    #print "DEBUG: interface is", dir(Worker.interface)
+                    #print "--------------\nDEBUG\n-------------\n",Worker.interface.printDetails(),"\n----------------"
                     Worker.interface.powerOn()
                     #No exceptions thus far means we can flag this operation a success!
                     successFlag = True
                     ##Log and output the error if we weren't able to start a node, but
                     # also try to find an alternative node from the suitable nodes list
                     #
-                except Exception as node_contact_error:
-                    msg = LogEntry(self.logFile, "An error occurred communicating with node %s: %s" % (node.hostname,node_contact_error))
+                    msg = LogEntry(self.logFile, "Powered on node %s" % node.hostname)
                     msg.show()
                     msg.write()
-                    #Fetch an alternative node that isn't already on the recommendedNodes list.
+                except Exception as node_contact_error:
+                    msg = LogEntry(self.logFile, "When powering on node %s, got %s" % (node.hostname,node_contact_error))
+                    msg.show()
+                    msg.write()
+                    try:
+                        #Fetch an alternative node that isn't already on the recommendedNodes list.
+                        node = self.getAlternativeNode(self.Cluster.interface.suitableNodes, triednodes)
+                        triednodes.append(node)
+                    except NodesExhaustedException as nex:
+                        msg = LogEntry(self.logFile, "No more nodes left to try - %s" % nex)
+                        msg.show()
+                        msg.write()
+                        successFlag = True  # Misleading, as the operation failed, but we're done either way!
+                        return  ##Break out of the loop
 
-                    node = self.getAlternative(self.Cluster.interface.suitableNodes, self.Cluster.interface.recommendedNodes)
-                    time.sleep(10)
-
-    def getAlternative (self, suitables, trieds):
+    def getAlternativeNode (self, suitables, trieds):
         '''
         Given a list of suitable nodes and a list of nodes already tried,
         return a suitable node to use as an alternative
@@ -309,9 +397,23 @@ class DCSE(object):
             for node in suitables:
                 if node not in trieds:
                     return node
+            #If we get this far without returning a node, give up
+            raise NodesExhaustedException("All possible nodes exhausted.")
+
+
 
     def bestFitStrategy(self):
         '''Function to power on enough nodes to satisfy the maximum possible of the queue'''
+        ##Update queued request data via the cluster interface
+        self.Cluster.interface.getNumQueuedNodes()
+        self.Cluster.interface.getNumQueuedCpus()
+        #Get the maximum amount of nodes we can be asked for
+        maxNodes = self.Cluster.interface.numQueuedNodes
+        #Get the total number of cpus we are being asked for.
+        maxCpus = self.Cluster.interface.numQueuedCpus
+        print "nodes is %d and cpus is %d" % (maxNodes, maxCpus)
+
+        #Get the total number of cpus for queued jobs
         pass
 
 
@@ -344,6 +446,9 @@ class LogEntry(object):
 class ConfigErrorException(Exception):
     pass
 
+class NodesExhaustedException(Exception):
+    pass
+
 ##Global functions
 def isInt(num):
     '''Check whether a string value is an integer ( isinstance(x, int) will not work for string-stored integers)'''
@@ -352,9 +457,6 @@ def isInt(num):
         return True
     except ValueError:
         return False
-
-
-
 
 
 ##where the magic happens...

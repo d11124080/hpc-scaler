@@ -32,6 +32,7 @@ class ClusterDriver(object):
         self.fullnodes = []     #An array of nodes that are at maximum cpu core usage
         self.cloudnodes = []    #An array of nodes with the "cloud" property
         self.idlecloudnodes = [] #An array of idle nodes with the cloud property
+        self.idlehardwarenodes = [] #An array of idle nodes without the cloud property!
         self.hardwarenodes = [] #An array of nodes without the 'cloud' property
         self.suitableNodes = [] #Array of nodes which would be suitable for a given job
         self.jobs = []          #An array of jobs of all status
@@ -43,6 +44,16 @@ class ClusterDriver(object):
         self.numCpus = 0        #Total number of cpu cores on the cluster
         self.numJobs = 0        #Total number of jobs of all status
         self.numQueuedJobs = 0  #Total number of queued jobs
+        self.numQueuedNodes = 0 #Total number of nodes being requested by queued jobs
+        self.numQueuedCpus = 0    #Total number of CPUs being requested by queued jobs
+        self.queuedJobsProperties = {}  #Dictionary of the counts of each property being requested by queued jobs
+        self.longest_wait_job = None   #Job which has been queued the longest
+        self.longest_wait_nodes = 0    #Nodes requested by longest queued job
+        self.longest_wait_ppn = 0      #CPUs per node requested by longest queued job
+        self.longest_wait_ncpus = 0    #Total cpus requested by longest queued job
+        self.longest_wait_props = []   #Array of node properties requested by longest queued job
+        self.longest_wait_time = 0     #Number fo seconds longest queued job has been waiting.
+
 
     def connect(self,host='localhost'):
         ##Create a connection to the cluster. Must assign a value of "Connected"
@@ -115,8 +126,10 @@ class ClusterDriver(object):
         '''Find the Job which has been queued the longest - used for longestqueued strategy'''
         #print "DEBUG: getting longest wait"
         longest_wait_time = 0
-        if self.jobs:
-            for job in self.jobs:
+
+
+        if self.queuedJobs:
+            for job in self.queuedJobs:
                 job.getQueueTime()
                 if job.tiq > longest_wait_time:
                     longest_wait_time = job.tiq
@@ -132,6 +145,28 @@ class ClusterDriver(object):
                         raise Exception("longest wait nodes not an int: %s" % self.longest_wait_nodes)
                     if not isinstance(self.longest_wait_ppn, int):
                         raise Exception("longest wait ppn not an int: %s" % self.longest_wait_ppn)
+        else:       ##no queued jobs to display
+            print "No jobs found in the queue"
+
+    def getNumQueuedNodes(self):
+        '''Get the number of nodes currently being requested in the queue'''
+        num_nodes_requested = 0
+        if self.queuedJobs:
+            for job in self.queuedJobs:
+                num_nodes_requested += job.numNodes
+        else:
+            print "No jobs in Queue"
+        self.numQueuedNodes = num_nodes_requested
+
+    def getNumQueuedCpus(self):
+        '''Get the number of CPUs currently being requested in the queue'''
+        num_procs_requested = 0
+        if self.queuedJobs:
+            for job in self.queuedJobs:
+                num_procs_requested += job.ncpus
+        else:
+            print "No jobs in Queue"
+        self.numQueuedCpus = num_procs_requested
 
     def getMinNodes(self, num_nodes, ppn, props=[]):
         '''
@@ -153,7 +188,8 @@ class ClusterDriver(object):
                         if prop not in node.properties:
                             thisnode = False    #This node doesn't have at least one of the properties we wanted.
                         else:
-                            print "node %s has property %s" % (node.hostname,prop)
+                            pass
+                            #print "node %s has property %s" % (node.hostname,prop)
                     #All properties have been checked, check our flag
                     if thisnode is True:
                         self.suitableNodes.append(node)
