@@ -271,7 +271,6 @@ class DCSE(object):
                 ## Cluster is not in demand, so initiate a shutdown of idle nodes
                 if self.hasHardware == 'True':
                     if numIdleHardwareNodes > self.spareHardware:    #Our config file allows for a specified number of "spare" idle nodes
-
                         poweredoffcount = 0                                                     #Count nodes we power off.
                         idlehardwarenodes = self.Cluster.interface.idlehardwarenodes                  #Take a copy before iteration and modification
                         for node in idlehardwarenodes:                                             #Iterate through local copy
@@ -334,7 +333,7 @@ class DCSE(object):
         #print "Nodes: %d\t PPN: %d\nProperties:" % (nodes,ppn)
         #for p in properties:
         #   print p
-        suitMsg = LogEntry(self.logFile, "Found %d suitable nodes" % len(self.Cluster.interface.suitableNodes))
+        suitMsg = LogEntry(self.logFile, "Found %d suitable nodes and %d recommended ones" % (len(self.Cluster.interface.suitableNodes), len(self.Cluster.interface.recommendedNodes)))
         suitMsg.show()
         suitMsg.write()
         #for node in self.Cluster.interface.suitableNodes:
@@ -375,6 +374,9 @@ class DCSE(object):
                     msg.write()
                     try:
                         #Fetch an alternative node that isn't already on the recommendedNodes list.
+                        msg = LogEntry(self.logFile, "Trying an alternative node...")
+                        msg.show()
+                        msg.write()
                         node = self.getAlternativeNode(self.Cluster.interface.suitableNodes, triednodes)
                         triednodes.append(node)
                     except NodesExhaustedException as nex:
@@ -407,14 +409,67 @@ class DCSE(object):
         ##Update queued request data via the cluster interface
         self.Cluster.interface.getNumQueuedNodes()
         self.Cluster.interface.getNumQueuedCpus()
+        self.Cluster.interface.getQueuedProperties()
         #Get the maximum amount of nodes we can be asked for
         maxNodes = self.Cluster.interface.numQueuedNodes
         #Get the total number of cpus we are being asked for.
         maxCpus = self.Cluster.interface.numQueuedCpus
-        print "nodes is %d and cpus is %d" % (maxNodes, maxCpus)
+        #print "DEBUG: nodes is %d and cpus is %d" % (maxNodes, maxCpus)
 
-        #Get the total number of cpus for queued jobs
-        pass
+        ##Get the minimum array of nodes that could possibly cover the
+        # number of CPUs being requested by all jobs in the queue.
+        # While this may result in jobs remaining in the queue, further
+        # iterations should handle the backlog.
+        #
+        self.Cluster.interface.getCpuNodes(maxCpus, self.Cluster.interface.queuedJobsProperties)
+        suitMsg = LogEntry(self.logFile, "Found %d suitable nodes and selected %d" % (len(self.Cluster.interface.validNodes), len(self.Cluster.interface.selectedNodes)))
+        suitMsg.show()
+        suitMsg.write()
+
+        ##Copy our recommendedNodes array. We can use this to add additional nodes to
+        # the list we've already tried (in case substitutons are needed) to save modifying
+        # an object which is being iterated through.
+        #
+        triednodes = self.Cluster.interface.selectedNodes
+        #print "DEBUG: Nodes selected to fulfill this request:"
+        for node in self.Cluster.interface.selectedNodes:
+            ##New worker node object creates a WorkerNode interface
+            # May need to recursively call this until we get success - some nodes may not be
+            # contactable due to failure, maintenance, etc.
+            #
+            successFlag = False
+            while successFlag == False:
+                try:
+                    Worker = WorkerNode(self.cfgPath,node.hostname,node.nodeType)
+                    #print "DEBUG: Worker is", dir(Worker)
+                    #print "DEBUG: interface is", dir(Worker.interface)
+                    #print "--------------\nDEBUG\n-------------\n",Worker.interface.printDetails(),"\n----------------"
+                    Worker.interface.powerOn()
+                    #No exceptions thus far means we can flag this operation a success!
+                    successFlag = True
+                    ##Log and output the error if we weren't able to start a node, but
+                    # also try to find an alternative node from the suitable nodes list
+                    #
+                    msg = LogEntry(self.logFile, "Powered on node %s" % node.hostname)
+                    msg.show()
+                    msg.write()
+                except Exception as node_contact_error:
+                    msg = LogEntry(self.logFile, "When powering on node %s, got %s" % (node.hostname,node_contact_error))
+                    msg.show()
+                    msg.write()
+                    try:
+                        #Fetch an alternative node that isn't already on the recommendedNodes list.
+                        msg = LogEntry(self.logFile, "Trying an alternative node...")
+                        msg.show()
+                        msg.write()
+                        node = self.getAlternativeNode(self.Cluster.interface.validNodes, triednodes)
+                        triednodes.append(node)
+                    except NodesExhaustedException as nex:
+                        msg = LogEntry(self.logFile, "No more nodes left to try - %s" % nex)
+                        msg.show()
+                        msg.write()
+                        successFlag = True  # Misleading, as the operation failed, but we're done either way!
+                        return  ##Break out of the loop
 
 
 

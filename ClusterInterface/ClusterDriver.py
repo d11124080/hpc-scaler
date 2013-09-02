@@ -46,7 +46,7 @@ class ClusterDriver(object):
         self.numQueuedJobs = 0  #Total number of queued jobs
         self.numQueuedNodes = 0 #Total number of nodes being requested by queued jobs
         self.numQueuedCpus = 0    #Total number of CPUs being requested by queued jobs
-        self.queuedJobsProperties = {}  #Dictionary of the counts of each property being requested by queued jobs
+        self.queuedJobsProperties = []  #Array of properties being requested by queued jobs
         self.longest_wait_job = None   #Job which has been queued the longest
         self.longest_wait_nodes = 0    #Nodes requested by longest queued job
         self.longest_wait_ppn = 0      #CPUs per node requested by longest queued job
@@ -126,8 +126,6 @@ class ClusterDriver(object):
         '''Find the Job which has been queued the longest - used for longestqueued strategy'''
         #print "DEBUG: getting longest wait"
         longest_wait_time = 0
-
-
         if self.queuedJobs:
             for job in self.queuedJobs:
                 job.getQueueTime()
@@ -164,6 +162,8 @@ class ClusterDriver(object):
         if self.queuedJobs:
             for job in self.queuedJobs:
                 num_procs_requested += job.ncpus
+                #print "DEBUG: job cpus is %s (%s x %s)" % (job.ncpus, job.numNodes, job.ppn)
+                #job.printDetails()
         else:
             print "No jobs in Queue"
         self.numQueuedCpus = num_procs_requested
@@ -174,11 +174,13 @@ class ClusterDriver(object):
         of nodes, cpus per node, and a specific set of properties. Should return a list
         of hostnames
         '''
+
         self.suitableNodes = []                  #Array to hold suitable nodes
         self.recommendedNodes = []              #Array to hold the nodes we will recommend
         for node in self.nodes:
+            #print "DEBUG: checking node %s" % node.hostname
             #Set an initial flag to determine if the node being examined right now is suitable
-            thisnode = True;                 #Useful until it proves otherwise!
+            thisnode = True                  #Useful until it proves otherwise!
             if node.state == 'down':         #Only nodes which are currently down are suitable, obviously!
                 if node.num_cpus >= ppn:     #Node will need to equal or exceed the requested ppn
                     ##Now make sure node satisfies all the properties requested by the job. Check
@@ -193,13 +195,60 @@ class ClusterDriver(object):
                     #All properties have been checked, check our flag
                     if thisnode is True:
                         self.suitableNodes.append(node)
-
-        ##Now establish the set of resources to recommend provisioning
-        #nodecount = 0
+        nodecount = 0
         for node in self.suitableNodes:
-            while len(self.recommendedNodes) < num_nodes:   #No need to return more nodes than the job is requesting!
+            if (nodecount < num_nodes):
                 self.recommendedNodes.append(node)
+                nodecount += 1
+
+    def getCpuNodes(self, num_cpus, props=[]):
+        '''
+        Function to obtain a set of nodes which provides num_cpus CPUs
+        and contain the properties specified in props[]
+        '''
+        self.validNodes = []                  #Array to hold suitable nodes
+        self.selectedNodes = []              #Array to hold the nodes we will recommend
+        for node in self.nodes:
+            #Set an initial flag to determine if the node being examined right now is suitable
+            thisnode = True                 #Useful until it proves otherwise!
+            if node.state == 'down':         #Only nodes which are currently down are suitable, obviously!
+                if props:
+                    for prop in props:
+                        #print "DEBUG: checking prop %s" % prop
+                        if prop not in node.properties:
+                            thisnode = False    #This node doesn't have at least one of the properties we wanted.
+                            #print "DEBUG: doesn't have property %s" % prop
+                        #print "node %s has property %s" % (node.hostname,prop)
+                #All properties have been checked, check our flag
+                if thisnode == True:
+                    self.validNodes.append(node)
+        ##Now establish the set of resources to recommend provisioning
+        cpucount = 0
+        for node in self.validNodes:
+            if (int(node.num_cpus) + cpucount) <= num_cpus:
+                self.selectedNodes.append(node)
+                cpucount += int(node.num_cpus)
                 #print "DEBUG: selected ",node.hostname
+            else:
+                #print "DEBUG: num cpus is %d and cpucount is %d" % (int(node.num_cpus),cpucount)
+                pass
+
+    def getQueuedProperties(self):
+        '''
+        Function to obtain a list of the node properties being requested
+        by jobs currently in the queue
+        '''
+        #reset queuedJobsProperties
+        self.queuedJobsProperties = []
+        #also update queuedJobs
+        self.getJobs()
+        if self.queuedJobs:
+            for job in self.queuedJobs:
+                for prop in job.properties:
+                    if prop not in self.queuedJobsProperties:
+                        self.queuedJobsProperties.append(prop)
+        else:
+            print "No jobs in Queue"
 
 
 

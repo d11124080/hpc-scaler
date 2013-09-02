@@ -124,7 +124,7 @@ class IpmiDriver(HardwareNode):
                 self.status = 'unknown'
 
         except Exception as err:
-            print err
+            raise Exception(err)
 
 #Un-comment for Unit Testing
 #'''

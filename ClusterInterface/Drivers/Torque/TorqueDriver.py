@@ -63,15 +63,15 @@ class TorqueDriver(ClusterDriver):
             else:
                 pbs_server = host
             self.con = pbs.pbs_connect(pbs_server)
-            if self.con:
+            if self.con > 0:    #Fail is -1, Success is 1
                 self.connectionStatus = 'Connected'
                 self.serverName = pbs_server
                 print "Connected to %s" % self.serverName
             else:
                 raise Exception("Unable to connect to Torque/PBS Server")
-                sys.exit(0) ##Quit the program - we won't be able to speak to the Resource Manager.
         except Exception, e:
             print e
+            sys.exit(0) ##Quit the program - we won't be able to speak to the Resource Manager.
 
     def disconnect(self):
         #pbs_disconnect returns non-zero value if an error occurs
@@ -79,9 +79,6 @@ class TorqueDriver(ClusterDriver):
         if (retval == 0):
             self.connectionStatus = 'Not Connected'
             self.con = 0
-        else:
-            #print pbs.pbs_statserver(self.con)
-            print "retval is ",retval
 
     def getConStatus(self):
         '''
@@ -261,6 +258,7 @@ class TorqueDriver(ClusterDriver):
                     #print "Attrib name is %s and value is %s" % (attrib.name, attrib.value)
             ##Now we have acquired all the information we need from each job. Store the job
             # data in our self.jobs array
+            job.ncpus = job.numNodes * job.ppn
             self.jobs.append(job)
         self.numJobs = len(self.jobs)
         self.numQueuedJobs = len(self.queuedJobs)
