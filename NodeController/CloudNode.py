@@ -53,7 +53,7 @@ class CloudNode(object):
         '''
         pass
 
-    def resolveIP(self):
+    def resolveIp(self):
         # Get the Public IP associated with this hostname
         try:
             self.ipAddr = socket.gethostbyname(self.hostname)

@@ -1,4 +1,6 @@
 '''
+Node module provides a class of type node, which refers to a worker node
+as seen by the resource manager.
 Created on 3 Aug 2013
 
 @author: ronan

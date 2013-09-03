@@ -1,5 +1,9 @@
 '''
-Created on 29 Aug 2013
+Ipmi Driver for the hpc-scaler NodeController. Extends the HardwareNode class to
+provide support for the management of Ipmi interfaces using the ipmitool application,
+which is required to be installed.
+    
+Created on 29 May 2013
 
 @author: ronan
 '''
